@@ -10,10 +10,14 @@
 %token EQ NEQ 
 %token AND OR
 %token IF ELSE
-%token FOR WHILE RETURN
+%token FOR WHILE RETURN PRINT
 %token ASSIGN 
 %token SEMI
 %token COMMA
+%token MAIN
+%token TRUE
+%token FALSE
+%token NULL
 %token INT BOOL STRING FLOAT VOID
 %token INTARRAY FLOATARRAY BOOLARRAY STRINGARRAY
 %token <bool> BOOL_L
@@ -40,19 +44,23 @@
 %%
 
 program:
-  { ([], []) } 
+  { ([]) } 
 | program func_decl { $2 :: $1 } 
 
 func_decl:
-  dtype ID LPAREN arg_list RPAREN LBRACE stmt_list RBRACE { FuncDecl($1, $2, $4, $7) }
+  dtype ID LPAREN arg_list RPAREN LBRACE stmt_list RBRACE 
+  { { typ = $1;
+    fname = $2;
+    fargs = $4;
+    fstmts = $7 } }
 
 arg_list:
   { [] }
 | arg_decl arg_list { $1 :: $2 }
 
 arg_decl:
-  dtype ID { VarDecl($1, $2, null) }
-| dtype ID COMMA { VarDecl($1, $2, null) }
+  dtype ID { VarDecl($1, $2, Noexpr) }
+| dtype ID COMMA { VarDecl($1, $2, Noexpr) }
 
 /* var_list:
   { [] }
@@ -66,16 +74,14 @@ stmt_list:
 | stmt stmt_list {$1 :: $2}
 
 stmt:
-| dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } /* Var declaration */
-| dtype ID SEMI { VarDecl($1, $2, null) }
+/*| dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } 
+| dtype ID SEMI { VarDecl($1, $2, null) }*/
 | IF LPAREN expr RPAREN LBRACE stmt_list RBRACE ELSE LBRACE stmt_list RBRACE  { If($3, $6, $10) }
 | FOR LPAREN expr SEMI expr SEMI expr RPAREN LBRACE stmt_list RBRACE { For($3, $5, $7, $10) }
 | WHILE LPAREN expr RPAREN LBRACE stmt_list RBRACE { While($3, $6) }
+| PRINT LPAREN expr RPAREN SEMI { Print($3)}
 | RETURN expr SEMI { Return($2) }
 
-expr_list:
-  { [] }
-| expr COMMA expr_list {$1 :: $3}
 
 expr:
   expr PLUS  expr { Binop($1, Add, $3) }
@@ -83,7 +89,6 @@ expr:
 | expr TIMES  expr { Binop($1, Mul, $3) }
 | expr DIVIDE expr { Binop($1, Div, $3) }
 | expr MOD expr { Binop($1, Mod, $3) }
-| NEGATE expr { Unop(Neg, $2)}
 | expr EQ  expr { Binop($1, Eq, $3) }  
 | expr NEQ  expr { Binop($1, Neq, $3) }
 | expr GEQ  expr { Binop($1, Geq, $3) }
@@ -92,14 +97,15 @@ expr:
 | expr LT  expr { Binop($1, Lt, $3) }
 | expr AND  expr { Binop($1, And, $3) }
 | expr OR  expr { Binop($1, Or, $3) }
-| NOT expr {Unop(Not, $2)}
-| LBRACKET expr_list RBRACKET  { ArrayLit($2) }
-| ID LBRACKET INT_L RBRACKET   { ArrayElement($1, $3) }
 | STRING_L           { StringLit($1) }
 | FLOAT_L           { FloatLit($1) }
 | INT_L             { IntLit($1)  }
 | BOOL_L            { BoolLit($1)  }
 | ID               { Id($1) }
+
+/*expr_list:
+  expr { [$1] }
+| expr COMMA expr_list { $1 :: $3 }*/
 
 dtype:
     | INT { Int }
@@ -107,7 +113,3 @@ dtype:
     | BOOL { Bool }
     | STRING { String }
     | VOID { Void }
-    | INTARRAY { IntArr }
-    | FLOATARRAY { FloatArr }
-    | BOOLARRAY { BoolArr }
-    | STRINGARRAY { StringArr }
