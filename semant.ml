@@ -43,14 +43,34 @@ let check (functions) =
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
   let check_function func =
-    (* Make sure no formals or locals are void or duplicates *)
+    (*let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+                  StringMap.empty ( func.locals )
+    in*)
+
+    let add_var map ventry = 
+        let name = snd ventry in
+        let dup_err = "Variable with name " ^ name ^" is a duplicate." in
+        match ventry with
+         (* _ when StringMap.mem name map -> make_err dup_err*)
+        _ -> StringMap.add name ventry map
+    in
     
+    let find_var map name =
+        try StringMap.find name map
+        with Not_found -> raise( Failure("Undeclared variable: " ^ name))
+    in
+
+    let symbols = StringMap.add "a" (Int, "a") StringMap.empty in
+    let type_of_identifier s symbols = fst(StringMap.find s symbols) 
+    in
+
     let rec expr e = match e with
         IntLit  l -> (Int, SLit l)
       | FloatLit l -> (Float, SFloatLit l)
       | BoolLit l  -> (Bool, SBoolLit l)
       | StringLit l -> (String, SStringLit l)
       | Noexpr     -> (Void, SNoexpr)
+      | Id s       -> (type_of_identifier s symbols, SId s)
       | Call(fname, args) as call -> 
           let fd = find_func fname in
           let param_length = List.length fd.fargs in
@@ -86,6 +106,9 @@ let check (functions) =
             | []              -> []
           in SBlock(check_stmt_list sl)
       | Print e -> SPrint(expr e)
+      (* | Declare(t, id) ->
+        let new_map = add_var map (t, id) in
+        (SDeclare(t, id), new_map) *)
 
     in (* body of check_function *)
     { styp = func.typ;

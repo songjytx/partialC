@@ -16,6 +16,7 @@ and sx =
 
 type sstmt = 
     SBlock of sstmt list
+  | SExpr of sexpr
   | SVarDecl of typ * string * sx
   | SIf of sexpr * sstmt list * sstmt list
   | SFor of sexpr * sexpr * sexpr * sstmt list

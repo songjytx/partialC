@@ -1,8 +1,10 @@
 { open Parser }
+let digit = ['0'-'9']
 
 rule tokenize = parse
   [' ' '\t' '\r' '\n'] { tokenize lexbuf }
 | "//" 		{ comment lexbuf }
+| '.'	    { DOT }
 | '+'  		{ PLUS }
 | '-'  		{ MINUS }
 | '*'  		{ TIMES }
@@ -26,29 +28,25 @@ rule tokenize = parse
 | ')'  		{ RPAREN }
 | '['  		{ LBRACKET }
 | ']'  		{ RBRACKET }
-| "print"   { PRINT }
-| "int[]"   { INTARRAY }
-| "float[]" { FLOATARRAY }
-| "bool[]"  { BOOLARRAY }
-| "string[]"{ STRINGARRAY }
 | "int"		{ INT } 
 | "float"  	{ FLOAT }
 | "bool"  	{ BOOL }
 | "string" 	{ STRING }
 | "void"   	{ VOID }
-| "true"   	{ TRUE }
-| "false"   { FALSE }
+| "true"   	{ BOOL_L(true) }
+| "false"   { BOOL_L(false) }
 | "null"   	{ NULL }
 | "if"   	{ IF }
 | "else"  	{ ELSE }
 | "for"   	{ FOR }
 | "while" 	{ WHILE }
 | "return" 	{ RETURN }
-| ['-']?['0'-'9']+ as lit { INT_L(int_of_string lit) }
-| ['-']?['0'-'9']+['.']['0' - '9']+ as lit {FLOAT_L(float_of_string lit)}
-| "\'" [^''']+ "\'" as lit { STRING_L(lit) }
-| ['a'-'z']+ as lit { ID(lit) }
+| ['-']?digit+ as lxm { INT_L(int_of_string lxm) }
+| ['-']?digit+['.']digit+ as lxm {FLOAT_L(float_of_string lxm)}
+| "\'" [^''']+ "\'" as lxm { STRING_L(lxm) }
+| ['a'-'z']+ as lxm { ID(lxm) }
 | eof { EOF }
+| _ as ch { raise (Failure("illegal character detected " ^ Char.escaped ch)) }
 
 and comment = parse
   '\n' { tokenize lexbuf }

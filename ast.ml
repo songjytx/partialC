@@ -46,12 +46,16 @@ let string_of_typ = function
 
 let rec string_of_expr = function
 	Noexpr -> ""
-	| Lit(i) -> string_of_int i
+	| IntLit(i) -> string_of_int i
 	| StringLit(s) -> s
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | _ -> "gg"
-  
+  | FloatLit(f) -> string_of_float f
+	| BoolLit(true) -> "true"
+	| BoolLit(false) -> "false"
+	| Id(s) -> s
+
 let string_of_vdecl = function
 	VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e
@@ -60,6 +64,8 @@ let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
+  | VarDecl(t, s1, Noexpr) -> string_of_typ t ^" " ^s1 ^ ";\n" 
+  | VarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_expr e1 ^ ";\n"
   |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
       String.concat ";\n" (List.map string_of_stmt s1)  ^ "else\n" ^ String.concat ";\n" (List.map string_of_stmt s2)
   | For(e1, e2, e3, s) ->
