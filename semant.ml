@@ -46,16 +46,30 @@ let check (functions) =
     (* Make sure no formals or locals are void or duplicates *)
     
     let rec expr e = match e with
-        IntLit  l -> (Int, SLiteral l)
-      | FloatLit l -> (Float, SFliteral l)
+        IntLit  l -> (Int, SLit l)
+      | FloatLit l -> (Float, SFloatLit l)
       | BoolLit l  -> (Bool, SBoolLit l)
       | StringLit l -> (String, SStringLit l)
       | Noexpr     -> (Void, SNoexpr)
-
+      | Call(fname, args) as call -> 
+          let fd = find_func fname in
+          let param_length = List.length fd.fargs in
+          if List.length args != param_length then
+            raise (Failure ("expecting " ^ string_of_int param_length ^ 
+                            " arguments in " ^ string_of_expr call))
+          else let check_call (ft, _) e = 
+            let (et, e') = expr e in 
+            let err = "illegal argument found " ^ string_of_typ et ^
+              " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
+            in (check_assign ft et err, e')
+          in 
+          let args' = List.map2 check_call fd.formals args
+          in (fd.typ, SCall(fname, args'))
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt = function
+        Expr e -> SExpr (expr e)
       | Return e -> let (t, e') = expr e in
         if t = func.typ then SReturn (t, e') 
         else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^

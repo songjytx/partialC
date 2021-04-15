@@ -4,6 +4,7 @@
 %token LPAREN RPAREN 
 %token LBRACKET RBRACKET
 %token NOT NEGATE 
+%token DOT
 %token TIMES DIVIDE MOD
 %token PLUS MINUS
 %token GEQ GT LEQ LT 
@@ -11,6 +12,7 @@
 %token AND OR
 %token IF ELSE
 %token FOR WHILE RETURN PRINT
+
 %token ASSIGN 
 %token SEMI
 %token COMMA
@@ -20,10 +22,10 @@
 %token NULL
 %token INT BOOL STRING FLOAT VOID
 %token INTARRAY FLOATARRAY BOOLARRAY STRINGARRAY
-%token <bool> BOOL_L
 %token <int> INT_L
-%token <string> ID STRING_L
 %token <float> FLOAT_L
+%token <bool> BOOL_L
+%token <string> ID STRING_L
 %token RETURN
 %token EOF
 
@@ -74,12 +76,12 @@ stmt_list:
 | stmt stmt_list {$1 :: $2}
 
 stmt:
-/*| dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } 
-| dtype ID SEMI { VarDecl($1, $2, null) }*/
+  expr SEMI  {Expr $1}
+| dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } 
+| dtype ID SEMI { VarDecl($1, $2, Noexpr) }
 | IF LPAREN expr RPAREN LBRACE stmt_list RBRACE ELSE LBRACE stmt_list RBRACE  { If($3, $6, $10) }
 | FOR LPAREN expr SEMI expr SEMI expr RPAREN LBRACE stmt_list RBRACE { For($3, $5, $7, $10) }
 | WHILE LPAREN expr RPAREN LBRACE stmt_list RBRACE { While($3, $6) }
-| PRINT LPAREN expr RPAREN SEMI { Print($3)}
 | RETURN expr SEMI { Return($2) }
 
 
@@ -102,10 +104,11 @@ expr:
 | INT_L             { IntLit($1)  }
 | BOOL_L            { BoolLit($1)  }
 | ID               { Id($1) }
+| ID LPAREN expr_list RPAREN { Call($1, $3)  }
 
-/*expr_list:
+expr_list:
   expr { [$1] }
-| expr COMMA expr_list { $1 :: $3 }*/
+| expr COMMA expr_list { $1 :: $3 }
 
 dtype:
     | INT { Int }
