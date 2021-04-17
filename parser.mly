@@ -50,19 +50,19 @@ program:
 | program func_decl { $2 :: $1 } 
 
 func_decl:
-  dtype ID LPAREN arg_list RPAREN LBRACE stmt_list RBRACE 
+  dtype ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE 
   { { typ = $1;
     fname = $2;
-    fargs = $4;
+    formals = $4;
     fstmts = $7 } }
 
-arg_list:
-  { [] }
-| arg_decl arg_list { $1 :: $2 }
+formals_opt:
+    /* nothing */ { [] }
+  | formal_list   { $1 }
 
-arg_decl:
-  dtype ID { VarDecl($1, $2, Noexpr) }
-| dtype ID COMMA { VarDecl($1, $2, Noexpr) }
+formal_list:
+    dtype ID                   { [($1,$2)]     }
+  | formal_list COMMA dtype ID { ($3,$4) :: $1 }
 
 /* var_list:
   { [] }

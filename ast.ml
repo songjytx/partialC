@@ -16,6 +16,8 @@ type expr =
   | Id of string
   | Call of string * expr list
 
+type bind = typ * string
+
 type stmt = 
 	  Block of stmt list
 	| VarDecl of typ * string * expr
@@ -26,12 +28,10 @@ type stmt =
 	| Return of expr
   | Expr of expr
 
-type args = VarDecl of typ * string * expr
-
 type func_decl = {
     typ : typ;
     fname : string;
-    fargs : args list;
+    formals : bind list;
     fstmts : stmt list;
   }
 
@@ -77,7 +77,7 @@ let rec string_of_stmt = function
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_vdecl fdecl.fargs) ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_stmt fdecl.fstmts) ^
   "}\n"

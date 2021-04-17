@@ -7,17 +7,6 @@ module StringMap = Map.Make(String)
 
 let check (functions) =
   (**** Checking Functions ****)
-  let built_in_decls = 
-    let add_bind map (name, ty) = StringMap.add name {
-      typ = Void;
-      fname = name; 
-      fargs = [];
-      fstmts = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("print", Int);
-                               ("printb", Bool);
-                               ("printf", Float);
-                               ("printbig", Int) ]
-  in
 
   (* Add function name to symbol table *)
   let add_func map fd = 
@@ -29,9 +18,15 @@ let check (functions) =
          _ when StringMap.mem n map -> make_err dup_err  
        | _ ->  StringMap.add n fd map 
   in
+  (*build in fucntions*)
+  let built_in_funcs = List.fold_left add_func StringMap.empty [
+      {typ = Void; fname = "print"; formals = [(String, "arg")];  fstmts = [] };
+      {typ = Void; fname = "printf"; formals = [(String, "arg")];  fstmts = [] };
+      ] 
+  in
 
   (* Collect all other function names into one symbol table *)
-  let function_decls = List.fold_left add_func built_in_decls functions
+  let function_decls = List.fold_left add_func built_in_funcs functions
   in
   
   (* Return a function from our symbol table *)
@@ -59,7 +54,9 @@ let check (functions) =
         try StringMap.find name map
         with Not_found -> raise( Failure("Undeclared variable: " ^ name))
     in
-
+    let check_assign lvaluet rvaluet err =
+       if lvaluet = rvaluet then lvaluet else raise (Failure err)
+    in   
     let symbols = StringMap.add "a" (Int, "a") StringMap.empty in
     let type_of_identifier s symbols = fst(StringMap.find s symbols) 
     in
@@ -73,7 +70,7 @@ let check (functions) =
       | Id s       -> (type_of_identifier s symbols, SId s)
       | Call(fname, args) as call -> 
           let fd = find_func fname in
-          let param_length = List.length fd.fargs in
+          let param_length = List.length fd.formals in
           if List.length args != param_length then
             raise (Failure ("expecting " ^ string_of_int param_length ^ 
                             " arguments in " ^ string_of_expr call))
@@ -105,7 +102,6 @@ let check (functions) =
             | s :: ss         -> check_stmt s :: check_stmt_list ss
             | []              -> []
           in SBlock(check_stmt_list sl)
-      | Print e -> SPrint(expr e)
       (* | Declare(t, id) ->
         let new_map = add_var map (t, id) in
         (SDeclare(t, id), new_map) *)
@@ -113,7 +109,7 @@ let check (functions) =
     in (* body of check_function *)
     { styp = func.typ;
       sfname = func.fname;
-      sfargs = func.fargs;
+      sformals = func.formals;
       sfstmts = match check_stmt (Block func.fstmts) with
 	SBlock(sl) -> sl
       | _ -> let err = "internal error: block didn't become a block?"

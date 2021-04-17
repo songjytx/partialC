@@ -56,10 +56,10 @@ let translate (functions) =
 
   (* Define each function (arguments and return type) so we can 
      call it even before we've created its body *)
-  let function_decls =
+  let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
     let function_decl m fdecl =
       let name = fdecl.sfname
-      and formal_types = Array.of_list (List.map (fun (A.VarDecl(t, _, _)) -> ltype_of_typ t ) fdecl.sfargs)
+      and formal_types = Array.of_list (List.map (fun (t,_) -> ltype_of_typ t ) fdecl.sformals)
       in let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
       StringMap.add name (L.define_function name ftype the_module, fdecl) m in
     List.fold_left function_decl StringMap.empty functions in
@@ -159,6 +159,7 @@ let translate (functions) =
                             | _ -> L.build_ret (expr builder e) builder );
                      builder
       | SPrint e -> ignore(expr builder e);builder
+      | SExpr e -> ignore(expr builder e); builder
     in
 
     (* Build the code for each statement in the function *)
