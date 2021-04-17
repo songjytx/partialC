@@ -115,9 +115,13 @@ let translate (functions) =
 	  | A.Geq     -> L.build_icmp L.Icmp.Sge
 	  ) e1' e2' "tmp" builder
 
-      | SCall ("printf", [e]) -> 
+      | SCall ("prints", [e]) -> 
 	  L.build_call printf_func [| char_format_str ; (expr builder e) |]
 	    "printf" builder
+      
+      | SCall ("printi", [e]) -> 
+    L.build_call printf_func [| int_format_str ; (expr builder e) |]
+      "printf" builder
 
       | SCall (f, args) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
