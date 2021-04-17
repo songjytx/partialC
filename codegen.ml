@@ -31,10 +31,11 @@ let translate (functions) =
   and i8_t       = L.i8_type     context
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
+  and char_t     = L.i8_type     context
   and void_t     = L.void_type   context in
 
-  let string_t   = L.pointer_type i8_t in
-
+(*   let string_t   = L.pointer_type i8_t in *)
+  let string_t = L.struct_type context [| L.pointer_type char_t; i32_t (*length*); |] in 
   (* Return the LLVM type for a MicroC type *)
   let ltype_of_typ = function
       A.Int   -> i32_t
@@ -44,15 +45,8 @@ let translate (functions) =
     | A.String -> string_t
   in
 
-  let printf_t : L.lltype = 
-      L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
-  let printf_func : L.llvalue = 
-      L.declare_function "printf" printf_t the_module in
-
-  let printbig_t : L.lltype =
-      L.function_type i32_t [| i32_t |] in
-  let printbig_func : L.llvalue =
-      L.declare_function "printbig" printbig_t the_module in
+  let printf_t = L.var_arg_function_type i32_t [| (L.pointer_type char_t)|] in
+    let printf_func = L.declare_function "printf" printf_t the_module in
 
   (* Define each function (arguments and return type) so we can 
      call it even before we've created its body *)
@@ -68,9 +62,9 @@ let translate (functions) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    let char_format_str = L.build_global_stringptr "%s\n" "" builder
+    and int_format_str = L.build_global_stringptr "%d\n" "" builder 
+    and float_format_str = L.build_global_stringptr "%g\n" "" builder in
 
     let lookup n = StringMap.find n StringMap.empty
 
@@ -120,14 +114,11 @@ let translate (functions) =
 	  | A.Gt -> L.build_icmp L.Icmp.Sgt
 	  | A.Geq     -> L.build_icmp L.Icmp.Sge
 	  ) e1' e2' "tmp" builder
-      | SCall ("print", [e]) | SCall ("printb", [e]) ->
-	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
-	    "printf" builder
-      | SCall ("printbig", [e]) ->
-	  L.build_call printbig_func [| (expr builder e) |] "printbig" builder
+
       | SCall ("printf", [e]) -> 
-	  L.build_call printf_func [| float_format_str ; (expr builder e) |]
+	  L.build_call printf_func [| char_format_str ; (expr builder e) |]
 	    "printf" builder
+
       | SCall (f, args) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
 	 let llargs = List.rev (List.map (expr builder) (List.rev args)) in
