@@ -54,7 +54,7 @@ func_decl:
   { { typ = $1;
     fname = $2;
     formals = $4;
-    fstmts = $7 } }
+    fstmts = List.rev $7 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -73,16 +73,17 @@ var_decl:
 
 stmt_list:
   { [] }
-| stmt stmt_list {$1 :: $2}
+| stmt_list stmt {$2 :: $1}
 
 stmt:
   expr SEMI  {Expr $1}
 | dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } 
 | dtype ID SEMI { VarDecl($1, $2, Noexpr) }
-| IF LPAREN expr RPAREN LBRACE stmt_list RBRACE ELSE LBRACE stmt_list RBRACE  { If($3, $6, $10) }
-| FOR LPAREN expr SEMI expr SEMI expr RPAREN LBRACE stmt_list RBRACE { For($3, $5, $7, $10) }
-| WHILE LPAREN expr RPAREN LBRACE stmt_list RBRACE { While($3, $6) }
+| IF LPAREN expr RPAREN LBRACE stmt_list RBRACE ELSE LBRACE stmt_list RBRACE  { If($3, List.rev $6, List.rev $10) }
+| FOR LPAREN expr SEMI expr SEMI expr RPAREN LBRACE stmt_list RBRACE { For($3, $5, $7, List.rev $10) }
+| WHILE LPAREN expr RPAREN LBRACE stmt_list RBRACE { While($3, List.rev $6) }
 | RETURN expr SEMI { Return($2) }
+| LBRACE stmt_list RBRACE { Block(List.rev $2)}
 
 
 expr:

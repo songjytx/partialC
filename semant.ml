@@ -53,7 +53,7 @@ let check (functions) =
     let check_assign lvaluet rvaluet err =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in   
-    let type_of_identifier s symbols = fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
+    let type_of_identifier s symbols = let _ = print_string "check identifier map \n" in let _ = print_string ((snd (StringMap.find s symbols))^"\n") in fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
     in
 
     let rec expr map e = match e with
@@ -62,7 +62,7 @@ let check (functions) =
       | BoolLit l  -> (Bool, SBoolLit l, map)
       | StringLit l -> (String, SStringLit l, map)
       | Noexpr     -> (Void, SNoexpr, map)
-      | Id s       -> (type_of_identifier s map, SId s, map)
+      | Id s       -> let _ = print_string "check identifier\n" in (type_of_identifier s map, SId s, map)
       | Call(fname, args) as call -> 
           let fd = find_func fname in
           let param_length = List.length fd.formals in
