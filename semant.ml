@@ -42,8 +42,8 @@ let check (functions) =
         let name = snd ventry in
         let dup_err = "Variable with name " ^ name ^" is a duplicate." in
         match ventry with
-         (* _ when StringMap.mem name map -> make_err dup_err*)
-        _ -> StringMap.add name ventry map
+        _ when StringMap.mem name map -> raise (Failure dup_err)
+        | _ -> StringMap.add name ventry map
     in
     
     let find_var map name =
@@ -106,7 +106,10 @@ let check (functions) =
               [Return _ as s] -> ([fst (check_stmt map s)], map)
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
             | Block sl :: ss  -> check_stmt_list map (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> let _ = print_string "check ss\n" in ((fst (check_stmt map s)) :: (fst (check_stmt_list map ss)), map)
+            | s :: ss         -> let _ = print_string "check ss\n" in 
+                                let cs, m' = check_stmt map s in 
+                                let csl, m'' = check_stmt_list m' ss in 
+                                (cs::csl, m'')
             | []              -> ([], map)
           in (SBlock(fst (check_stmt_list map sl)), map)
 
@@ -117,7 +120,7 @@ let check (functions) =
         styp = func.typ;
         sfname = func.fname;
         sformals = func.formals;
-        sfstmts = match fst (check_stmt symbols (Block func.fstmts)) with
+        sfstmts = match fst (check_stmt symbols (Block(func.fstmts))) with
           SBlock(sl) -> sl
           | _ -> let err = "internal error: block didn't become a block?"
           in raise (Failure err)
