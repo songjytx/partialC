@@ -78,6 +78,25 @@ let check (functions) =
           in 
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'), map)
+      | Binop(e1, op, e2) as ex ->
+        let (t1, e1', map') = expr map e1  
+        in let (t2, e2', map'') = expr map' e2 
+        in
+        let same = t1 = t2 in
+        let ty = 
+        match t1 with
+        (* | ArrayList inner -> (match op with
+                  Add -> t1
+                  | _ -> make_err ("Illegal binary operation, cannot perform "^string_of_expr ex^" on lists.")) *)
+        _ -> match op with
+              Add | Sub | Mul | Div      when same && t1 = Int   -> Int
+              | Add | Sub | Mul | Div    when same && t1 = Float -> Float
+              | Add                      when same && t1 = String -> String
+              | Eq | Neq                 when same               -> Bool
+              | Lt | Leq | Gt | Geq      when same && (t1 = Int || t1 = Float) -> Bool
+              | And | Or                 when same && t1 = Bool -> Bool
+              | _ -> raise (Failure ("Illegal binary operator " ^ string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^ string_of_typ t2 ^ " in " ^ string_of_expr ex))
+        in (ty, SBinop((t1, e1'), op, (t2, e2')), map'')
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
