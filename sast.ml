@@ -54,6 +54,8 @@ let rec string_of_sstmt = function
     SBlock(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n";
+(*   | SVarDecl(t, s1, SNoexpr) -> string_of_typ t ^" " ^s1 ^ ";\n"  *)
+  | SVarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_sexpr e1 ^ ";\n"
   | SIf(e, s1, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
       String.concat ";\n" (List.map string_of_sstmt s1)  ^ "else\n" ^ String.concat ";\n" (List.map string_of_sstmt s2)
   | SFor(e1, e2, e3, s) ->

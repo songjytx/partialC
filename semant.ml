@@ -53,7 +53,7 @@ let check (functions) =
     let check_assign lvaluet rvaluet err =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in   
-    let type_of_identifier s symbols = fst(StringMap.find s symbols) 
+    let type_of_identifier s symbols = fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
     in
 
     let rec expr map e = match e with
@@ -81,17 +81,22 @@ let check (functions) =
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt map st = match st with
-        Expr e -> let (ty, sx, map') = expr map e in (SExpr (ty, sx), map')
+        Expr e -> let _ = print_string "Check 3\n" in 
+            let (ty, sx, map') = expr map e in (SExpr (ty, sx), map')
       | Return e -> let (t, e', map') = expr map e in
         if t = func.typ then (SReturn (t, e'), map' )
         else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
 		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
-      | VarDecl(t, id, e) as ex ->
+      | VarDecl(t, id, e) ->
+        let _ = print_string "Check1\n" in
         let (right_t, sx, map') = expr map e  in
+
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)
         let new_map = add_var map' (t, id) in
         let right = (right_t, sx) in
+        let _ = print_string "Check2: " in
+        let _ = print_string ((snd (StringMap.find id new_map))^"\n") in
         (SVarDecl(t, id, right), new_map)
         
       (* A block is correct if each statement is correct and nothing
@@ -101,7 +106,7 @@ let check (functions) =
               [Return _ as s] -> ([fst (check_stmt map s)], map)
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
             | Block sl :: ss  -> check_stmt_list map (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> ((fst (check_stmt map s)) :: (fst (check_stmt_list map ss)), map)
+            | s :: ss         -> let _ = print_string "check ss\n" in ((fst (check_stmt map s)) :: (fst (check_stmt_list map ss)), map)
             | []              -> ([], map)
           in (SBlock(fst (check_stmt_list map sl)), map)
 
@@ -112,7 +117,7 @@ let check (functions) =
         styp = func.typ;
         sfname = func.fname;
         sformals = func.formals;
-        sfstmts = match fst (check_stmt symbols (Block func.fstmts))with
+        sfstmts = match fst (check_stmt symbols (Block func.fstmts)) with
           SBlock(sl) -> sl
           | _ -> let err = "internal error: block didn't become a block?"
           in raise (Failure err)

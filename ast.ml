@@ -47,14 +47,14 @@ let string_of_typ = function
 let rec string_of_expr = function
 	Noexpr -> ""
 	| IntLit(i) -> string_of_int i
-	| StringLit(s) -> s
+	| StringLit(s) -> "String->"^s
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | _ -> "gg"
   | FloatLit(f) -> string_of_float f
 	| BoolLit(true) -> "true"
 	| BoolLit(false) -> "false"
-	| Id(s) -> s
+	| Id(s) -> "(ID)->"^s
 
 let string_of_vdecl = function
 	VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
@@ -73,6 +73,7 @@ let rec string_of_stmt = function
       string_of_expr e3  ^ ") " ^ String.concat ";\n" (List.map string_of_stmt s)
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ String.concat ";\n" (List.map string_of_stmt s)
   | Return(e) -> "return " ^ string_of_expr e
+  | _ -> "Statement Not Matched??"
 
 
 let string_of_fdecl fdecl =

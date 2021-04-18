@@ -20,6 +20,7 @@ module StringMap = Map.Make(String)
 
 (* translate : Sast.program -> Llvm.module *)
 let translate (functions) =
+  let report_error e = raise (Failure e) in 
   let context    = L.global_context () in
   
   (* Create the LLVM compilation module into which
@@ -51,38 +52,40 @@ let translate (functions) =
   (* Define each function (arguments and return type) so we can 
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
-    let function_decl m fdecl =
+    let function_decl map fdecl =
       let name = fdecl.sfname
-      and formal_types = Array.of_list (List.map (fun (t,_) -> ltype_of_typ t ) fdecl.sformals)
-      in let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
-      StringMap.add name (L.define_function name ftype the_module, fdecl) m in
+      and formal_types = Array.of_list (List.map (fun (t,_) -> ltype_of_typ t ) fdecl.sformals) in 
+      let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
+      StringMap.add name (L.define_function name ftype the_module, fdecl) map in
+
     List.fold_left function_decl StringMap.empty functions in
   
   (* Fill in the body of the given function *)
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    let char_format_str = L.build_global_stringptr "%s\n" "" builder
-    and int_format_str = L.build_global_stringptr "%d\n" "" builder 
-    and float_format_str = L.build_global_stringptr "%g\n" "" builder in
+    let char_format_str = L.build_global_stringptr "%s" "" builder
+    and int_format_str = L.build_global_stringptr "%d" "" builder 
+    and float_format_str = L.build_global_stringptr "%f" "" builder in
 
-    let lookup n = StringMap.find n StringMap.empty
-
+    let lookup map n : L.llvalue = match StringMap.find_opt n map with
+        Some v -> v 
+      | None -> report_error( "Couldn't find " ^ n)
     in
 
     (* Construct code for an expression; return its value *)
-    let rec expr builder ((_, e) : sexpr) = match e with
-        SLit i  -> L.const_int i32_t i
-      | SFloatLit f -> L.const_float float_t f
-      | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
-      | SStringLit s -> L.build_global_stringptr s "str" builder
-      | SNoexpr     -> L.const_int i32_t 0
-      | SId s       -> L.build_load (lookup s) s builder
-      | SAssignOp (s, e) -> let e' = expr builder e in
-                          ignore(L.build_store e' (lookup s) builder); e'
+    let rec expr map builder ((_, e) : sexpr) = match e with
+        SLit i  -> L.const_int i32_t i, map, builder
+      | SFloatLit f -> L.const_float float_t f, map, builder
+      | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0), map, builder
+      | SStringLit s -> L.build_global_stringptr s "str" builder, map, builder
+      | SNoexpr     -> L.const_int i32_t 0, map, builder
+      | SId s       -> L.build_load (lookup map s) s builder, map, builder
+      | SAssignOp (s, e) -> let (e', _, _) = expr map builder e in
+                          ignore(L.build_store e' (lookup map s) builder); e', map, builder
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
-	  let e1' = expr builder e1
-	  and e2' = expr builder e2 in
+	  let (e1', _, _) = expr map builder e1
+	  and (e2', _, _) = expr map builder e2 in
 	  (match op with 
 	    A.Add     -> L.build_fadd
 	  | A.Sub     -> L.build_fsub
@@ -96,10 +99,10 @@ let translate (functions) =
 	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
 	  | A.And | A.Or ->
 	      raise (Failure "internal error: semant should have rejected and/or on float")
-	  ) e1' e2' "tmp" builder
+	  ) e1' e2' "tmp" builder, map, builder
       | SBinop (e1, op, e2) ->
-	  let e1' = expr builder e1
-	  and e2' = expr builder e2 in
+	  let (e1', _, _) = expr map builder e1
+	  and (e2', _, _) = expr map builder e2 in
 	  (match op with
 	    A.Add     -> L.build_add
 	  | A.Sub     -> L.build_sub
@@ -113,51 +116,56 @@ let translate (functions) =
 	  | A.Leq     -> L.build_icmp L.Icmp.Sle
 	  | A.Gt -> L.build_icmp L.Icmp.Sgt
 	  | A.Geq     -> L.build_icmp L.Icmp.Sge
-	  ) e1' e2' "tmp" builder
+	  ) e1' e2' "tmp" builder, map, builder
 
-      | SCall ("prints", [e]) -> 
-	  L.build_call printf_func [| char_format_str ; (expr builder e) |]
-	    "printf" builder
-      
-      | SCall ("printi", [e]) -> 
-    L.build_call printf_func [| int_format_str ; (expr builder e) |]
-      "printf" builder
+    | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
+    
+    | SCall ("printi", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
 
-      | SCall (f, args) ->
-         let (fdef, fdecl) = StringMap.find f function_decls in
-	 let llargs = List.rev (List.map (expr builder) (List.rev args)) in
-	 let result = (match fdecl.styp with 
+    | SCall (f, args) ->
+
+    let (fdef, fdecl) = StringMap.find f function_decls in
+	  let llargs = List.map (fun(a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev args))) in
+	  let result = (match fdecl.styp with 
                         A.Void -> ""
                       | _ -> f ^ "_result") in
-         L.build_call fdef (Array.of_list llargs) result builder
+         L.build_call fdef (Array.of_list llargs) result builder, map, builder
     in
     
     (* LLVM insists each basic block end with exactly one "terminator" 
        instruction that transfers control.  This function runs "instr builder"
        if the current block does not already have a terminator.  Used,
        e.g., to handle the "fall off the end of the function" case. *)
-    let add_terminal builder instr =
-      match L.block_terminator (L.insertion_block builder) with
-	Some _ -> ()
+    let add_terminal builder instr = match L.block_terminator (L.insertion_block builder) with
+	      Some _ -> ()
       | None -> ignore (instr builder) in
 	
     (* Build the code for the given statement; return the builder for
        the statement's successor (i.e., the next instruction will be built
        after the one generated by this call) *)
 
-    let rec stmt builder = function
-        SBlock sl -> List.fold_left stmt builder sl 
+    let rec stmt map builder s = match s with
+        SBlock sl -> 
+               let b, _ = List.fold_left (fun (b, m) s -> stmt m b s) (builder, map) sl in (b, map)
       | SReturn e -> ignore(match fdecl.styp with
                               (* Special "return nothing" instr *)
                               A.Void -> L.build_ret_void builder 
                               (* Build return statement *)
-                            | _ -> L.build_ret (expr builder e) builder );
-                     builder
-      | SExpr e -> ignore(expr builder e); builder
+                            | _ -> let e',_,_ = (expr map builder e) in L.build_ret e' builder ); builder, map
+
+      | SExpr e -> ignore(expr map builder e); builder, map
+      | SVarDecl(ty, st, rex) -> 
+            let l_type = ltype_of_typ ty in
+            let addr = L.build_alloca l_type st builder in
+            let rval, m', builder = expr map builder rex in
+            let m'' = StringMap.add st addr m' in
+            let _ = L.build_store rval addr builder in 
+            (builder, m'')
+      | _ -> report_error "No implementation"
     in
 
     (* Build the code for each statement in the function *)
-    let builder = stmt builder (SBlock fdecl.sfstmts) in
+    let builder,_= stmt StringMap.empty builder (SBlock fdecl.sfstmts) in
 
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.styp with
