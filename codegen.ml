@@ -102,7 +102,8 @@ let translate (functions) =
     	  | A.And | A.Or ->
     	      raise (Failure "internal error: semant should have rejected and/or on float")
     	  ) e1' e2' "tmp" builder, map, builder
-      | SBinop (e1, op, e2) ->
+
+          | SBinop (e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in
     	  (match op with
@@ -120,7 +121,8 @@ let translate (functions) =
     	  | A.Geq     -> L.build_icmp L.Icmp.Sge
     	  ) e1' e2' "tmp" builder, map, builder
 
-      | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
+    | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
+
     
       | SCall ("printi", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
 

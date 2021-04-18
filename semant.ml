@@ -84,8 +84,8 @@ let check (functions) =
           in (fd.typ, SCall(fname, args'), map)
 
       | Binop(e1, op, e2) as ex ->
-        let (t1, e1', map') = expr map e1  
-        in let (t2, e2', map'') = expr map' e2 
+        let (t1, e1', map') = check_expr map e1  
+        in let (t2, e2', map'') = check_expr map' e2 
         in
         let same = t1 = t2 in
         let ty = 
@@ -102,7 +102,6 @@ let check (functions) =
               | And | Or                 when same && t1 = Bool -> Bool
               | _ -> raise (Failure ("Illegal binary operator " ^ string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^ string_of_typ t2 ^ " in " ^ string_of_expr ex))
         in (ty, SBinop((t1, e1'), op, (t2, e2')), map'')
-    in
 
     and find_name (name : expr) map err : (Ast.typ * Sast.sx * (Ast.typ * StringMap.key) StringMap.t) = match name with
         Id _ -> check_expr map name
