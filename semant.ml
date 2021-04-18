@@ -53,7 +53,8 @@ let check (functions) =
     let check_assign lvaluet rvaluet err =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in   
-    let type_of_identifier s symbols = let _ = print_string "check identifier map \n" in let _ = print_string ((snd (StringMap.find s symbols))^"\n") in fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
+    let type_of_identifier s symbols =  fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
+    (* let _ = print_string "check identifier map \n" in let _ = print_string ( snd (StringMap.find s symbols)^"\n") in *)
     in
 
     let rec expr map e = match e with
@@ -62,7 +63,7 @@ let check (functions) =
       | BoolLit l  -> (Bool, SBoolLit l, map)
       | StringLit l -> (String, SStringLit l, map)
       | Noexpr     -> (Void, SNoexpr, map)
-      | Id s       -> let _ = print_string "check identifier\n" in (type_of_identifier s map, SId s, map)
+      | Id s       -> (* let _ = print_string "check identifier\n" in *) (type_of_identifier s map, SId s, map)
       | Call(fname, args) as call -> 
           let fd = find_func fname in
           let param_length = List.length fd.formals in
@@ -81,22 +82,18 @@ let check (functions) =
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt map st = match st with
-        Expr e -> let _ = print_string "Check 3\n" in 
-            let (ty, sx, map') = expr map e in (SExpr (ty, sx), map')
+        Expr e -> let (ty, sx, map') = expr map e in (SExpr (ty, sx), map')
       | Return e -> let (t, e', map') = expr map e in
         if t = func.typ then (SReturn (t, e'), map' )
         else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
 		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
       | VarDecl(t, id, e) ->
-        let _ = print_string "Check1\n" in
         let (right_t, sx, map') = expr map e  in
 
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)
         let new_map = add_var map' (t, id) in
         let right = (right_t, sx) in
-        let _ = print_string "Check2: " in
-        let _ = print_string ((snd (StringMap.find id new_map))^"\n") in
         (SVarDecl(t, id, right), new_map)
         
       (* A block is correct if each statement is correct and nothing
@@ -106,8 +103,7 @@ let check (functions) =
               [Return _ as s] -> ([fst (check_stmt map s)], map)
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
             | Block sl :: ss  -> check_stmt_list map (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> let _ = print_string "check ss\n" in 
-                                let cs, m' = check_stmt map s in 
+            | s :: ss         -> let cs, m' = check_stmt map s in 
                                 let csl, m'' = check_stmt_list m' ss in 
                                 (cs::csl, m'')
             | []              -> ([], map)
