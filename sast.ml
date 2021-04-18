@@ -43,7 +43,6 @@ let rec string_of_sexpr (sex:sexpr) = match snd sex with
   | SStringLit(s) -> s
   | SCall(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SId(s) -> s
-  | _ -> "NOT FOUND"
 
 
 let string_of_svdecl = function

@@ -84,52 +84,51 @@ let translate (functions) =
       | SAssignOp (s, e) -> let (e', _, _) = expr map builder e in
                           ignore(L.build_store e' (lookup map s) builder); e', map, builder
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
-	  let (e1', _, _) = expr map builder e1
-	  and (e2', _, _) = expr map builder e2 in
-	  (match op with 
-	    A.Add     -> L.build_fadd
-	  | A.Sub     -> L.build_fsub
-	  | A.Mul     -> L.build_fmul
-	  | A.Div     -> L.build_fdiv 
-	  | A.Eq   -> L.build_fcmp L.Fcmp.Oeq
-	  | A.Neq     -> L.build_fcmp L.Fcmp.One
-	  | A.Lt    -> L.build_fcmp L.Fcmp.Olt
-	  | A.Leq     -> L.build_fcmp L.Fcmp.Ole
-	  | A.Gt -> L.build_fcmp L.Fcmp.Ogt
-	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-	  | A.And | A.Or ->
-	      raise (Failure "internal error: semant should have rejected and/or on float")
-	  ) e1' e2' "tmp" builder, map, builder
+    	  let (e1', _, _) = expr map builder e1
+    	  and (e2', _, _) = expr map builder e2 in
+    	  (match op with 
+    	    A.Add     -> L.build_fadd
+    	  | A.Sub     -> L.build_fsub
+    	  | A.Mul     -> L.build_fmul
+    	  | A.Div     -> L.build_fdiv 
+    	  | A.Eq   -> L.build_fcmp L.Fcmp.Oeq
+    	  | A.Neq     -> L.build_fcmp L.Fcmp.One
+    	  | A.Lt    -> L.build_fcmp L.Fcmp.Olt
+    	  | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+    	  | A.Gt -> L.build_fcmp L.Fcmp.Ogt
+    	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+    	  | A.And | A.Or ->
+    	      raise (Failure "internal error: semant should have rejected and/or on float")
+    	  ) e1' e2' "tmp" builder, map, builder
       | SBinop (e1, op, e2) ->
-	  let (e1', _, _) = expr map builder e1
-	  and (e2', _, _) = expr map builder e2 in
-	  (match op with
-	    A.Add     -> L.build_add
-	  | A.Sub     -> L.build_sub
-	  | A.Mul     -> L.build_mul
-    | A.Div     -> L.build_sdiv
-	  | A.And     -> L.build_and
-	  | A.Or      -> L.build_or
-	  | A.Eq   -> L.build_icmp L.Icmp.Eq
-	  | A.Neq     -> L.build_icmp L.Icmp.Ne
-	  | A.Lt    -> L.build_icmp L.Icmp.Slt
-	  | A.Leq     -> L.build_icmp L.Icmp.Sle
-	  | A.Gt -> L.build_icmp L.Icmp.Sgt
-	  | A.Geq     -> L.build_icmp L.Icmp.Sge
-	  ) e1' e2' "tmp" builder, map, builder
+    	  let (e1', _, _) = expr map builder e1
+    	  and (e2', _, _) = expr map builder e2 in
+    	  (match op with
+    	    A.Add     -> L.build_add
+    	  | A.Sub     -> L.build_sub
+    	  | A.Mul     -> L.build_mul
+        | A.Div     -> L.build_sdiv
+    	  | A.And     -> L.build_and
+    	  | A.Or      -> L.build_or
+    	  | A.Eq   -> L.build_icmp L.Icmp.Eq
+    	  | A.Neq     -> L.build_icmp L.Icmp.Ne
+    	  | A.Lt    -> L.build_icmp L.Icmp.Slt
+    	  | A.Leq     -> L.build_icmp L.Icmp.Sle
+    	  | A.Gt -> L.build_icmp L.Icmp.Sgt
+    	  | A.Geq     -> L.build_icmp L.Icmp.Sge
+    	  ) e1' e2' "tmp" builder, map, builder
 
-    | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
+      | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
     
-    | SCall ("printi", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
+      | SCall ("printi", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
 
-    | SCall (f, args) ->
-
-    let (fdef, fdecl) = StringMap.find f function_decls in
-	  let llargs = List.map (fun(a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev args))) in
-	  let result = (match fdecl.styp with 
-                        A.Void -> ""
-                      | _ -> f ^ "_result") in
-         L.build_call fdef (Array.of_list llargs) result builder, map, builder
+      | SCall (f, args) ->
+        let (fdef, fdecl) = StringMap.find f function_decls in
+    	  let llargs = List.map (fun(a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev args))) in
+    	  let result = (match fdecl.styp with 
+                            A.Void -> ""
+                          | _ -> f ^ "_result") in
+             L.build_call fdef (Array.of_list llargs) result builder, map, builder
     in
     
     (* LLVM insists each basic block end with exactly one "terminator" 
