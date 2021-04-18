@@ -38,10 +38,6 @@ let check (functions) =
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
   let check_function func =
-    (*let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-                  StringMap.empty ( func.locals )
-    in*)
-
     let add_var map ventry = 
         let name = snd ventry in
         let dup_err = "Variable with name " ^ name ^" is a duplicate." in
@@ -57,17 +53,16 @@ let check (functions) =
     let check_assign lvaluet rvaluet err =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in   
-    let symbols = StringMap.add "a" (Int, "a") StringMap.empty in
     let type_of_identifier s symbols = fst(StringMap.find s symbols) 
     in
 
-    let rec expr e = match e with
-        IntLit  l -> (Int, SLit l)
-      | FloatLit l -> (Float, SFloatLit l)
-      | BoolLit l  -> (Bool, SBoolLit l)
-      | StringLit l -> (String, SStringLit l)
-      | Noexpr     -> (Void, SNoexpr)
-      | Id s       -> (type_of_identifier s symbols, SId s)
+    let rec expr map e = match e with
+        IntLit  l -> (Int, SLit l, map)
+      | FloatLit l -> (Float, SFloatLit l, map)
+      | BoolLit l  -> (Bool, SBoolLit l, map)
+      | StringLit l -> (String, SStringLit l, map)
+      | Noexpr     -> (Void, SNoexpr, map)
+      | Id s       -> (type_of_identifier s map, SId s, map)
       | Call(fname, args) as call -> 
           let fd = find_func fname in
           let param_length = List.length fd.formals in
@@ -75,44 +70,52 @@ let check (functions) =
             raise (Failure ("expecting " ^ string_of_int param_length ^ 
                             " arguments in " ^ string_of_expr call))
           else let check_call (ft, _) e = 
-            let (et, e') = expr e in 
+            let (et, e', map') = expr map e in 
             let err = "illegal argument found " ^ string_of_typ et ^
               " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
             in (check_assign ft et err, e')
           in 
           let args' = List.map2 check_call fd.formals args
-          in (fd.typ, SCall(fname, args'))
+          in (fd.typ, SCall(fname, args'), map)
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    let rec check_stmt = function
-        Expr e -> SExpr (expr e)
-      | Return e -> let (t, e') = expr e in
-        if t = func.typ then SReturn (t, e') 
+    let rec check_stmt map st = match st with
+        Expr e -> let (ty, sx, map') = expr map e in (SExpr (ty, sx), map')
+      | Return e -> let (t, e', map') = expr map e in
+        if t = func.typ then (SReturn (t, e'), map' )
         else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
 		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
-	    
-	    (* A block is correct if each statement is correct and nothing
-	       follows any Return statement.  Nested blocks are flattened. *)
+      | VarDecl(t, id, e) as ex ->
+        let (right_t, sx, map') = expr map e  in
+        let err = "illegal argument found." in
+        (* let ty = check_type_equal t right_t err in *)
+        let new_map = add_var map' (t, id) in
+        let right = (right_t, sx) in
+        (SVarDecl(t, id, right), new_map)
+        
+      (* A block is correct if each statement is correct and nothing
+         follows any Return statement.  Nested blocks are flattened. *)
       | Block sl -> 
-          let rec check_stmt_list = function
-              [Return _ as s] -> [check_stmt s]
+          let rec check_stmt_list map sl = match sl with
+              [Return _ as s] -> ([fst (check_stmt map s)], map)
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
-            | Block sl :: ss  -> check_stmt_list (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> check_stmt s :: check_stmt_list ss
-            | []              -> []
-          in SBlock(check_stmt_list sl)
-      (* | Declare(t, id) ->
-        let new_map = add_var map (t, id) in
-        (SDeclare(t, id), new_map) *)
+            | Block sl :: ss  -> check_stmt_list map (sl @ ss) (* Flatten blocks *)
+            | s :: ss         -> ((fst (check_stmt map s)) :: (fst (check_stmt_list map ss)), map)
+            | []              -> ([], map)
+          in (SBlock(fst (check_stmt_list map sl)), map)
 
     in (* body of check_function *)
-    { styp = func.typ;
-      sfname = func.fname;
-      sformals = func.formals;
-      sfstmts = match check_stmt (Block func.fstmts) with
-	SBlock(sl) -> sl
-      | _ -> let err = "internal error: block didn't become a block?"
-      in raise (Failure err)
+    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name (ty, name) m) StringMap.empty func.formals
+    in
+      {
+        styp = func.typ;
+        sfname = func.fname;
+        sformals = func.formals;
+        sfstmts = match fst (check_stmt symbols (Block func.fstmts))with
+          SBlock(sl) -> sl
+          | _ -> let err = "internal error: block didn't become a block?"
+          in raise (Failure err)
     }
+      
   in (List.map check_function functions)

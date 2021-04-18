@@ -1,6 +1,6 @@
 open Ast
 
-type sexpr = typ* sx 
+type sexpr = typ * sx 
 and sx = 
     SBinop of sexpr * operator * sexpr
   | SAssignOp of string * sexpr
@@ -17,7 +17,7 @@ and sx =
 type sstmt = 
     SBlock of sstmt list
   | SExpr of sexpr
-  | SVarDecl of typ * string * sx
+  | SVarDecl of typ * string * sexpr
   | SIf of sexpr * sstmt list * sstmt list
   | SFor of sexpr * sexpr * sexpr * sstmt list
   | SWhile of sexpr * sstmt list
@@ -25,7 +25,6 @@ type sstmt =
   | SReturn of sexpr
 
 
-(* do not create SVarDecl*)
 
 type sfunc_decl = {
     styp : typ;
@@ -62,7 +61,6 @@ let rec string_of_sstmt = function
       string_of_sexpr e3  ^ ") " ^ String.concat ";\n" (List.map string_of_sstmt s)
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ String.concat ";\n" (List.map string_of_sstmt s)
   | SReturn(e) -> "return " ^ string_of_sexpr e
-
 
 let string_of_sfdecl fdecl =
   string_of_typ fdecl.styp ^ " " ^

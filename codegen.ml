@@ -153,7 +153,6 @@ let translate (functions) =
                               (* Build return statement *)
                             | _ -> L.build_ret (expr builder e) builder );
                      builder
-      | SPrint e -> ignore(expr builder e);builder
       | SExpr e -> ignore(expr builder e); builder
     in
 
