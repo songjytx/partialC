@@ -75,14 +75,16 @@ let translate (functions) =
 
     (* Construct code for an expression; return its value *)
     let rec expr map builder ((_, e) : sexpr) = match e with
-        SLit i  -> L.const_int i32_t i, map, builder
+
+        SLit i  -> L.const_int i32_t i, map, builder  
       | SFloatLit f -> L.const_float float_t f, map, builder
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0), map, builder
       | SStringLit s -> L.build_global_stringptr s "str" builder, map, builder
       | SNoexpr     -> L.const_int i32_t 0, map, builder
       | SId s       -> L.build_load (lookup map s) s builder, map, builder
-      | SAssignOp (s, e) -> let (e', _, _) = expr map builder e in
-                          ignore(L.build_store e' (lookup map s) builder); e', map, builder
+      | SAssignOp (v, e) -> let (e', map1, builder) = expr map builder e in match (snd v) with
+                            SId s -> 
+                            ignore(L.build_store e' (lookup map s) builder); e', map1, builder
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
 	  let (e1', _, _) = expr map builder e1
 	  and (e2', _, _) = expr map builder e2 in
@@ -121,6 +123,8 @@ let translate (functions) =
     | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
     
     | SCall ("printi", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
+    
+    | _ -> let _ = print_string "gg" in (L.const_int i32_t 0), map, builder
 
     | SCall (f, args) ->
 
@@ -130,6 +134,7 @@ let translate (functions) =
                         A.Void -> ""
                       | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list llargs) result builder, map, builder
+
     in
     
     (* LLVM insists each basic block end with exactly one "terminator" 

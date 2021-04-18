@@ -55,6 +55,7 @@ let rec string_of_expr = function
 	| BoolLit(true) -> "true"
 	| BoolLit(false) -> "false"
 	| Id(s) -> "(ID)->"^s
+  | AssignOp(v, e) -> string_of_expr v ^ " = " ^ string_of_expr e
 
 let string_of_vdecl = function
 	VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id

@@ -52,18 +52,22 @@ let check (functions) =
     in
     let check_assign lvaluet rvaluet err =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
-    in   
+    in 
     let type_of_identifier s symbols =  fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
     (* let _ = print_string "check identifier map \n" in let _ = print_string ( snd (StringMap.find s symbols)^"\n") in *)
     in
 
-    let rec expr map e = match e with
+    let rec check_expr map e = match e with
         IntLit  l -> (Int, SLit l, map)
       | FloatLit l -> (Float, SFloatLit l, map)
       | BoolLit l  -> (Bool, SBoolLit l, map)
       | StringLit l -> (String, SStringLit l, map)
       | Noexpr     -> (Void, SNoexpr, map)
-      | Id s       -> (* let _ = print_string "check identifier\n" in *) (type_of_identifier s map, SId s, map)
+      | Id s       -> (type_of_identifier s map, SId s, map)
+      | AssignOp(v, e)-> 
+        let lt, vname, map1 = find_name v map "assignment error" in
+        let rt, ex, map2 = check_expr map1 e in
+        (check_assign lt rt "type miss match", SAssignOp((lt, vname), (rt, ex)), map2)
       | Call(fname, args) as call -> 
           let fd = find_func fname in
           let param_length = List.length fd.formals in
@@ -71,24 +75,27 @@ let check (functions) =
             raise (Failure ("expecting " ^ string_of_int param_length ^ 
                             " arguments in " ^ string_of_expr call))
           else let check_call (ft, _) e = 
-            let (et, e', map') = expr map e in 
+            let (et, e', map') = check_expr map e in 
             let err = "illegal argument found " ^ string_of_typ et ^
               " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
             in (check_assign ft et err, e')
           in 
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'), map)
-    in
 
+    and find_name (name : expr) map err : (Ast.typ * Sast.sx * (Ast.typ * StringMap.key) StringMap.t) = match name with
+        Id _ -> check_expr map name
+        | _ -> raise (Failure ("find name error"))
+    in
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt map st = match st with
-        Expr e -> let (ty, sx, map') = expr map e in (SExpr (ty, sx), map')
-      | Return e -> let (t, e', map') = expr map e in
+        Expr e -> let (ty, sx, map') = check_expr map e in (SExpr (ty, sx), map')
+      | Return e -> let (t, e', map') = check_expr map e in
         if t = func.typ then (SReturn (t, e'), map' )
         else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
 		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
       | VarDecl(t, id, e) ->
-        let (right_t, sx, map') = expr map e  in
+        let (right_t, sx, map') = check_expr map e  in
 
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)

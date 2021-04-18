@@ -64,12 +64,7 @@ formal_list:
     dtype ID                   { [($1,$2)]     }
   | formal_list COMMA dtype ID { ($3,$4) :: $1 }
 
-/* var_list:
-  { [] }
-| var_decl var_list { $1 :: $2 } 
-
-var_decl:
-  dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } */
+vname: ID {Id($1)}
 
 stmt_list:
   { [] }
@@ -106,6 +101,7 @@ expr:
 | BOOL_L            { BoolLit($1)  }
 | ID               { Id($1) }
 | ID LPAREN expr_list RPAREN { Call($1, $3)  }
+| vname ASSIGN expr {AssignOp($1, $3)}
 
 expr_list:
   expr { [$1] }

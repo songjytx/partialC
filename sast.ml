@@ -3,7 +3,7 @@ open Ast
 type sexpr = typ * sx 
 and sx = 
     SBinop of sexpr * operator * sexpr
-  | SAssignOp of string * sexpr
+  | SAssignOp of sexpr * sexpr
   | SLit of int
   | SVar of string
   | SNoexpr
@@ -43,6 +43,7 @@ let rec string_of_sexpr (sex:sexpr) = match snd sex with
   | SStringLit(s) -> s
   | SCall(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SId(s) -> s
+  | SAssignOp(v, e) -> string_of_sexpr v ^ " = " ^ string_of_sexpr e
   | _ -> "NOT FOUND"
 
 
