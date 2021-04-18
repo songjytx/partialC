@@ -44,6 +44,20 @@ let string_of_typ = function
   | Void -> "void"
   | String -> "string"
 
+let string_of_op = function
+    Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Eq -> "=="
+  | Neq -> "!="
+  | Lt -> "<"
+  | Leq -> "<="
+  | Gt -> ">"
+  | Geq -> ">="
+  | And -> "&&"
+  | Or -> "||"
+
 let rec string_of_expr = function
 	Noexpr -> ""
 	| IntLit(i) -> string_of_int i
