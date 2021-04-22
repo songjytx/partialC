@@ -1,0 +1,7 @@
+void main(){
+	int a = 2;
+	while(a > 1){
+		prints('hello world');
+		a = 1;
+	}
+}

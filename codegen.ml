@@ -75,7 +75,6 @@ let translate (functions) =
 
     (* Construct code for an expression; return its value *)
     let rec expr map builder ((_, expression) : sexpr) = match expression with
-
         SLit i  -> L.const_int i32_t i, map, builder  
       | SFloatLit f -> L.const_float float_t f, map, builder
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0), map, builder
@@ -112,7 +111,7 @@ let translate (functions) =
     	      raise (Failure "internal error: semant should have rejected and/or on float")
     	  ) e1' e2' "tmp" builder, map, builder
 
-          | SBinop (e1, op, e2) ->
+      | SBinop (e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in
     	  (match op with
@@ -168,15 +167,26 @@ let translate (functions) =
 
       | SExpr e -> ignore(expr map builder e); builder, map
       | SVarDecl(ty, st, rex) -> 
-            (* let _ = print_string "testing" in *)
-            let l_type = ltype_of_typ ty in
-            let addr = L.build_alloca l_type st builder in
-            let rval, m', builder = expr map builder rex in
-            let m'' = StringMap.add st addr m' in
+          (* let _ = print_string "testing" in *)
+          let l_type = ltype_of_typ ty in
+          let addr = L.build_alloca l_type st builder in
+          let rval, m', builder = expr map builder rex in
+          let m'' = StringMap.add st addr m' in
 
-            let _ = L.build_store rval addr builder in 
-            (builder, m'')
-      | _ -> report_error "No implementation"
+          let _ = L.build_store rval addr builder in 
+          (builder, m'')
+      | SWhile(condition, stmtList) ->
+          let pred_bb = L.append_block context "while" the_function in
+          let _ = L.build_br pred_bb builder in
+          let body_bb = L.append_block context "while_body" the_function in
+          let body_bldr, m' = stmt map (L.builder_at_end context body_bb) stmtList in
+          let () = add_terminal body_bldr (L.build_br pred_bb) in
+          let pred_builder = L.builder_at_end context pred_bb in
+          let bool_val, m'', pred_builder = expr m' pred_builder condition in
+          let merge_bb = L.append_block context "merge" the_function in
+          let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+          (L.builder_at_end context merge_bb, m'')
+        | _ -> report_error "No implementation"
     in
 
     (* Build the code for each statement in the function *)

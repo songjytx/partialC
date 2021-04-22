@@ -20,9 +20,9 @@ type bind = typ * string
 type stmt = 
 	  Block of stmt list
 	| VarDecl of typ * string * expr
-	| If of expr * stmt list * stmt list
-	| For of expr * expr * expr * stmt list
-	| While of expr * stmt list
+	| If of expr * stmt * stmt
+	| For of expr * expr * expr * stmt
+	| While of expr * stmt
 	| Print of expr
 	| Return of expr
   | Expr of expr
@@ -71,7 +71,7 @@ let rec string_of_expr = function
   | AssignOp(v, e) -> string_of_expr v ^ " = " ^ string_of_expr e
 
 let string_of_vdecl = function
-	VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
+	  VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e
 
 let rec string_of_stmt = function
@@ -80,12 +80,10 @@ let rec string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | VarDecl(t, s1, Noexpr) -> string_of_typ t ^" " ^s1 ^ ";\n" 
   | VarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_expr e1 ^ ";\n"
-  |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
-      String.concat ";\n" (List.map string_of_stmt s1)  ^ "else\n" ^ String.concat ";\n" (List.map string_of_stmt s2)
+  |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s1  ^ "else\n" ^ string_of_stmt s2
   | For(e1, e2, e3, s) ->
-      "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
-      string_of_expr e3  ^ ") " ^ String.concat ";\n" (List.map string_of_stmt s)
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ String.concat ";\n" (List.map string_of_stmt s)
+      "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^ string_of_expr e3  ^ ") " ^ string_of_stmt s
+  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | Return(e) -> "return " ^ string_of_expr e
   | _ -> "Statement Not Matched??"
 

@@ -82,7 +82,6 @@ let check (functions) =
           in 
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'), map)
-
       | Binop(e1, op, e2) as ex ->
         let (t1, e1', map') = check_expr map e1  
         in let (t2, e2', map'') = check_expr map' e2 
@@ -107,6 +106,11 @@ let check (functions) =
         Id _ -> check_expr map name
         | _ -> raise (Failure ("find name error"))
     in
+    let check_bool_expr map e = 
+      let (t', e', map') = check_expr map e
+      and err = "expected Boolean expression in " ^ string_of_expr e
+      in if t' != Bool then raise (Failure err) else (t', e') 
+    in
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt map st = match st with
         Expr e -> let (ty, sx, map') = check_expr map e in (SExpr (ty, sx), map')
@@ -122,19 +126,20 @@ let check (functions) =
         let new_map = add_var map' (t, id) in
         let right = (right_t, sx) in
         (SVarDecl(t, id, right), new_map)
-        
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
       | Block sl -> 
-          let rec check_stmt_list map sl = match sl with
-              [Return _ as s] -> ([fst (check_stmt map s)], map)
-            | Return _ :: _   -> raise (Failure "nothing may follow a return")
-            | Block sl :: ss  -> check_stmt_list map (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> let cs, m' = check_stmt map s in 
-                                let csl, m'' = check_stmt_list m' ss in 
-                                (cs::csl, m'')
-            | []              -> ([], map)
-          in (SBlock(fst (check_stmt_list map sl)), map)
+        let rec check_stmt_list map sl = match sl with
+            [Return _ as s] -> ([fst (check_stmt map s)], map)
+          | Return _ :: _   -> raise (Failure "nothing may follow a return")
+          | Block sl :: ss  -> check_stmt_list map (sl @ ss) (* Flatten blocks *)
+          | s :: ss         -> let cs, m' = check_stmt map s in 
+                              let csl, m'' = check_stmt_list m' ss in 
+                              (cs::csl, m'')
+          | []              -> ([], map)
+        in (SBlock(fst (check_stmt_list map sl)), map)
+      | While(cond, stmtList) -> SWhile(check_bool_expr map cond, fst (check_stmt map stmtList)), map
+
 
     in (* body of check_function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name (ty, name) m) StringMap.empty func.formals

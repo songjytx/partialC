@@ -74,9 +74,9 @@ stmt:
   expr SEMI  {Expr $1}
 | dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } 
 | dtype ID SEMI { VarDecl($1, $2, Noexpr) }
-| IF LPAREN expr RPAREN LBRACE stmt_list RBRACE ELSE LBRACE stmt_list RBRACE  { If($3, List.rev $6, List.rev $10) }
-| FOR LPAREN expr SEMI expr SEMI expr RPAREN LBRACE stmt_list RBRACE { For($3, $5, $7, List.rev $10) }
-| WHILE LPAREN expr RPAREN LBRACE stmt_list RBRACE { While($3, List.rev $6) }
+| IF LPAREN expr RPAREN stmt ELSE stmt  { If($3, $5, $7) }
+| FOR LPAREN expr SEMI expr SEMI expr RPAREN stmt { For($3, $5, $7, $9) }
+| WHILE LPAREN expr RPAREN stmt { While($3, $5) }
 | RETURN expr SEMI { Return($2) }
 | LBRACE stmt_list RBRACE { Block(List.rev $2)}
 
