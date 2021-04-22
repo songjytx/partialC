@@ -139,7 +139,13 @@ let check (functions) =
           | []              -> ([], map)
         in (SBlock(fst (check_stmt_list map sl)), map)
       | While(cond, stmtList) -> SWhile(check_bool_expr map cond, fst (check_stmt map stmtList)), map
-
+      | For(e1, e2, e3, stmtList) -> let (ty1, sx1, m') = check_expr map e1 in let (ty3, sx3, m'') = check_expr m' e3 in
+        SFor((ty1, sx1), check_bool_expr map e2, (ty3, sx3), fst (check_stmt map stmtList)), map
+      | If(cond, s1, s2) -> 
+        let sthen, _ = check_stmt map s1 in
+        let selse, _ = check_stmt map s2 in
+        (SIf(check_bool_expr map cond, sthen, selse), map)
+      | _ -> raise (Failure "Match failure")
 
     in (* body of check_function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name (ty, name) m) StringMap.empty func.formals

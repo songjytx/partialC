@@ -3,5 +3,10 @@ void main(){
 	while(a > 1){
 		prints('hello world');
 		a = 1;
+		// a = 3;
+	}
+	while(a == 1){
+		prints('second hello world');
+		a = 2;
 	}
 }

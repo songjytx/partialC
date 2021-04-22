@@ -177,16 +177,29 @@ let translate (functions) =
           (builder, m'')
       | SWhile(condition, stmtList) ->
           let pred_bb = L.append_block context "while" the_function in
-          let _ = L.build_br pred_bb builder in
+          ignore(L.build_br pred_bb builder);
           let body_bb = L.append_block context "while_body" the_function in
           let body_bldr, m' = stmt map (L.builder_at_end context body_bb) stmtList in
-          let () = add_terminal body_bldr (L.build_br pred_bb) in
+          add_terminal body_bldr (L.build_br pred_bb);
           let pred_builder = L.builder_at_end context pred_bb in
-          let bool_val, m'', pred_builder = expr m' pred_builder condition in
+          let bool_val, _, _ = expr m' pred_builder condition in
           let merge_bb = L.append_block context "merge" the_function in
-          let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
-          (L.builder_at_end context merge_bb, m'')
-        | _ -> report_error "No implementation"
+          ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
+          L.builder_at_end context merge_bb, m'
+      | SFor(e1, e2, e3, stmtList) -> stmt map builder ( SBlock [SExpr e1 ; SWhile (e2, SBlock [stmtList ; SExpr e3]) ] )
+      | SIf(e, s1, s2) -> 
+        let bool_val, m', builder = expr map builder e in
+        let merge_bb = L.append_block context "merge" the_function in
+        let build_br_merge = L.build_br merge_bb in (* partial function *)
+        let then_bb = L.append_block context "then" the_function in
+        let then_builder, m'' = stmt m' (L.builder_at_end context then_bb) s1 in
+          add_terminal then_builder build_br_merge;
+        let else_bb = L.append_block context "else" the_function in
+        let else_builder, m'' = stmt m' (L.builder_at_end context else_bb) s2 in
+          add_terminal else_builder build_br_merge;
+        ignore(L.build_cond_br bool_val then_bb else_bb builder);
+        L.builder_at_end context merge_bb, m'
+      | _ -> report_error "No implementation"
     in
 
     (* Build the code for each statement in the function *)
