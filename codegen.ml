@@ -36,7 +36,7 @@ let translate (functions) =
   and void_t     = L.void_type   context in
 
 (*   let string_t   = L.pointer_type i8_t in *)
-  let string_t = L.struct_type context [| L.pointer_type char_t; i32_t (*length*); |] in 
+  let string_t = L.struct_type context [| L.pointer_type char_t|] in 
   (* Return the LLVM type for a MicroC type *)
   let ltype_of_typ = function
       A.Int   -> i32_t
@@ -79,7 +79,16 @@ let translate (functions) =
         SLit i  -> L.const_int i32_t i, map, builder  
       | SFloatLit f -> L.const_float float_t f, map, builder
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0), map, builder
-      | SStringLit s -> L.build_global_stringptr s "str" builder, map, builder
+      | SStringLit s -> let alloc = L.build_alloca string_t "alloc" builder in 
+                        let str_global = L.build_global_string s "str_global" builder in
+                        let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
+                        let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
+                        (* let str_len = L.const_int i32_t (String.length s) in *)
+                        (* let len_loc = L.build_struct_gep alloc 1 "" builder in  *)
+                        let _ = L.build_store str str_field_loc builder in
+                        (* let _ = L.build_store str_len len_loc builder in *)
+                        let value = L.build_load alloc "" builder
+                      in (value, map, builder)
       | SNoexpr     -> L.const_int i32_t 0, map, builder
       | SId s       -> L.build_load (lookup map s) s builder, map, builder
       | SAssignOp (v, e) -> let (e', map1, builder) = expr map builder e in (match (snd v) with
@@ -121,9 +130,11 @@ let translate (functions) =
     	  | A.Geq     -> L.build_icmp L.Icmp.Sge
     	  ) e1' e2' "tmp" builder, map, builder
 
-      | SCall ("prints", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
+      | SCall ("prints", [e]) -> 
+        let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
 
-      | SCall ("printi", [e]) -> let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
+      | SCall ("printi", [e]) -> 
+        let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
 
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
@@ -157,10 +168,12 @@ let translate (functions) =
 
       | SExpr e -> ignore(expr map builder e); builder, map
       | SVarDecl(ty, st, rex) -> 
+            (* let _ = print_string "testing" in *)
             let l_type = ltype_of_typ ty in
             let addr = L.build_alloca l_type st builder in
             let rval, m', builder = expr map builder rex in
             let m'' = StringMap.add st addr m' in
+
             let _ = L.build_store rval addr builder in 
             (builder, m'')
       | _ -> report_error "No implementation"

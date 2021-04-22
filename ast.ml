@@ -8,14 +8,13 @@ type expr =
   | AssignOp of expr * expr
   | Lit of int
   | Var of string
-  | Noexpr
   | StringLit of string
   | FloatLit of float
   | IntLit of int
   | BoolLit of bool
   | Id of string
   | Call of string * expr list
-
+  | Noexpr
 type bind = typ * string
 
 type stmt = 
