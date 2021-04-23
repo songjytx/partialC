@@ -1,4 +1,4 @@
-type typ = Int | Float | Bool | Void | String
+type typ = Int | Float | Bool | Void | String | Array of typ
 type operator = Add | Sub | Mul | Div | Mod | Sep | Eq | Neq | Lt | Leq | Gt | Geq | And | Or
 type assignment = Assign
 
@@ -6,6 +6,7 @@ type expr =
 
     Binop of expr * operator * expr
   | AssignOp of expr * expr
+  | ArrayAssignOp of expr * expr * expr
   | Lit of int
   | Var of string
   | StringLit of string
@@ -14,7 +15,10 @@ type expr =
   | BoolLit of bool
   | Id of string
   | Call of string * expr list
+  | ArrayLit of expr list
+  | ArrayIndex of expr * expr
   | Noexpr
+
 type bind = typ * string
 
 type stmt = 
@@ -36,12 +40,14 @@ type func_decl = {
 
 type program = func_decl list
 
-let string_of_typ = function
+let rec string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
   | Float -> "float"
   | Void -> "void"
   | String -> "string"
+  | Array(t) -> string_of_typ(t) ^ " array"
+  
 
 let string_of_op = function
     Add -> "+"
@@ -60,15 +66,18 @@ let string_of_op = function
 let rec string_of_expr = function
 	Noexpr -> ""
 	| IntLit(i) -> string_of_int i
-	| StringLit(s) -> "String->"^s
+	| StringLit(s) -> s
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
-  | _ -> "gg"
   | FloatLit(f) -> string_of_float f
 	| BoolLit(true) -> "true"
 	| BoolLit(false) -> "false"
-	| Id(s) -> "(ID)->"^s
+	| Id(s) -> s
   | AssignOp(v, e) -> string_of_expr v ^ " = " ^ string_of_expr e
+  | ArrayAssignOp(v, i, e) -> string_of_expr v ^  "[" ^ string_of_expr i ^ "]"^" = " ^ string_of_expr e
+  | ArrayLit(l) -> "[" ^ (String.concat ", " (List.map string_of_expr l)) ^ "]"
+  | ArrayIndex(v, i) -> string_of_expr v ^ "[" ^ string_of_expr i ^ "]"
+  | _ -> "no expression matched*******"
 
 let string_of_vdecl = function
 	  VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
@@ -78,7 +87,7 @@ let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
-  | VarDecl(t, s1, Noexpr) -> string_of_typ t ^" " ^s1 ^ ";\n" 
+  | VarDecl(t, s1, Noexpr) ->  let _ = print_string("no expre") in string_of_typ t ^" " ^s1 ^ ";\n" 
   | VarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_expr e1 ^ ";\n"
   |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s1  ^ "else\n" ^ string_of_stmt s2
   | For(e1, e2, e3, s) ->

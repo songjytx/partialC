@@ -33,6 +33,7 @@ rule tokenize = parse
 | "bool"  	{ BOOL }
 | "string" 	{ STRING }
 | "void"   	{ VOID }
+| "arr"     { ARRAY}
 | "true"   	{ BOOL_L(true) }
 | "false"   { BOOL_L(false) }
 | "null"   	{ NULL }

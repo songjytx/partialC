@@ -35,19 +35,22 @@ let translate (functions) =
   and char_t     = L.i8_type     context
   and void_t     = L.void_type   context in
 
-(*   let string_t   = L.pointer_type i8_t in *)
+  let array_t = fun (llvm_type) -> L.struct_type context [| L.pointer_type llvm_type; i32_t; i32_t|] in
   let string_t = L.struct_type context [| L.pointer_type char_t|] in 
+  let const_i32_of = L.const_int (L.i32_type context) in
+  let zero = L.const_int i32_t 0 in
   (* Return the LLVM type for a MicroC type *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
     | A.Float -> float_t
     | A.Void  -> void_t
     | A.String -> string_t
+    | A.Array a -> array_t (ltype_of_typ a)
   in
 
   let printf_t = L.var_arg_function_type i32_t [| (L.pointer_type char_t)|] in
-    let printf_func = L.declare_function "printf" printf_t the_module in
+  let printf_func = L.declare_function "printf" printf_t the_module in
 
   (* Define each function (arguments and return type) so we can 
      call it even before we've created its body *)
@@ -88,11 +91,63 @@ let translate (functions) =
                         (* let _ = L.build_store str_len len_loc builder in *)
                         let value = L.build_load alloc "" builder
                       in (value, map, builder)
+
+      | SArrayLit a -> let llvm_ty = ltype_of_typ (fst (List.hd a))in
+                       let ty = array_t llvm_ty in 
+                       let alloc = L.build_alloca ty "array" builder in
+                       let data_field_loc = L.build_struct_gep alloc 0 "" builder in
+(*                     let len_loc = L.build_struct_gep alloc 1 "" builder in
+                       let cap_loc = L.build_struct_gep alloc 2 "" builder in *)
+                       let len = List.length a in
+                       let cap = len * 2 in 
+                       let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "" builder
+                       in
+                       let sto (acc, builder) ex = 
+                         let value, m', builder = expr map builder ex in
+                         let item_loc = L.build_gep data_loc [|const_i32_of acc |] "" builder in
+                         let _ = L.build_store value item_loc builder in
+                         (acc + 1, builder)
+                       in
+                       let _, builder = List.fold_left sto (0, builder) a in
+                       let _ = L.build_store data_loc data_field_loc builder in
+(*                     let _ = L.build_store (const_i32_of len) len_loc builder in
+                       let _ = L.build_store (const_i32_of cap) cap_loc builder in *)
+                       let value = L.build_load alloc "" builder 
+                     in (value, map, builder)
+
+      | SArrayIndex(id, idx) -> 
+                      let name = match snd id with 
+                            SId s -> s
+                          | _ -> "err:cannot index non-id"
+                      in
+                      let a_addr = lookup map name in
+                      let data_field_loc = L.build_struct_gep a_addr 0 "" builder in
+                      let data_loc = L.build_load data_field_loc "" builder in
+                      let ival, _, builder = expr map builder idx in
+                      let i_addr = L.build_gep data_loc [| ival |] "" builder in 
+                      let value = L.build_load i_addr "" builder in
+                      (value, map, builder)
+
       | SNoexpr     -> L.const_int i32_t 0, map, builder
       | SId s       -> L.build_load (lookup map s) s builder, map, builder
-      | SAssignOp (v, e) -> let (e', map1, builder) = expr map builder e in (match (snd v) with
+      | SAssignOp (v, e) -> let (e1, map1, builder) = expr map builder e in (match (snd v) with
                             SId s -> 
-                            ignore(L.build_store e' (lookup map s) builder); e', map1, builder)
+                            ignore(L.build_store e1 (lookup map s) builder); e1, map1, builder)
+
+      | SArrayAssignOp (v, i, e) -> 
+                      let rval, m', builder = expr map builder e in
+                      let name = match snd v with
+                          SId s -> s
+                      in
+                      let a_addr = lookup map name in
+                      let data_field_loc = L.build_struct_gep a_addr 0 "" builder in
+                      let data_loc = L.build_load data_field_loc "" builder in
+                      let ival, _, builder = expr map builder i in
+                      let addr = L.build_gep data_loc [| ival |] "" builder  in
+                      let _ = L.build_store rval addr builder in 
+                    (rval, m', builder)
+
+
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in

@@ -21,7 +21,7 @@
 %token FALSE
 %token NULL
 %token INT BOOL STRING FLOAT VOID
-%token INTARRAY FLOATARRAY BOOLARRAY STRINGARRAY
+%token ARRAY
 %token <int> INT_L
 %token <float> FLOAT_L
 %token <bool> BOOL_L
@@ -64,15 +64,19 @@ formal_list:
     dtype ID                   { [($1,$2)]     }
   | formal_list COMMA dtype ID { ($3,$4) :: $1 }
 
-vname: ID {Id($1)}
+vname: 
+    ID {Id($1)}
+
+/*array:
+  ID LBRACKET INT_L RBRACKET {ArrayIndex(Id($1), IntLit($3))}*/
 
 stmt_list:
-  { [] }
-| stmt_list stmt {$2 :: $1}
+    { [] }
+  | stmt_list stmt {$2 :: $1}
 
 stmt:
   expr SEMI  {Expr $1}
-| dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) } 
+| dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) }
 | dtype ID SEMI { VarDecl($1, $2, Noexpr) }
 | IF LPAREN expr RPAREN stmt ELSE stmt  { If($3, $5, $7) }
 | FOR LPAREN expr SEMI expr SEMI expr RPAREN stmt { For($3, $5, $7, $9) }
@@ -81,35 +85,45 @@ stmt:
 | LBRACE stmt_list RBRACE { Block(List.rev $2)}
 
 
+
 expr:
-  expr PLUS  expr { Binop($1, Add, $3) }
-| expr MINUS  expr { Binop($1, Sub, $3) }
-| expr TIMES  expr { Binop($1, Mul, $3) }
-| expr DIVIDE expr { Binop($1, Div, $3) }
-| expr MOD expr { Binop($1, Mod, $3) }
-| expr EQ  expr { Binop($1, Eq, $3) }  
-| expr NEQ  expr { Binop($1, Neq, $3) }
-| expr GEQ  expr { Binop($1, Geq, $3) }
-| expr GT  expr { Binop($1, Gt, $3) }
-| expr LEQ  expr { Binop($1, Leq, $3) }
-| expr LT  expr { Binop($1, Lt, $3) }
-| expr AND  expr { Binop($1, And, $3) }
-| expr OR  expr { Binop($1, Or, $3) }
-| STRING_L           { StringLit($1) }
-| FLOAT_L           { FloatLit($1) }
-| INT_L             { IntLit($1)  }
-| BOOL_L            { BoolLit($1)  }
-| ID               { Id($1) }
-| ID LPAREN expr_list RPAREN { Call($1, $3)  }
-| vname ASSIGN expr {AssignOp($1, $3)}
+    expr PLUS  expr { Binop($1, Add, $3) }
+  | expr MINUS  expr { Binop($1, Sub, $3) }
+  | expr TIMES  expr { Binop($1, Mul, $3) }
+  | expr DIVIDE expr { Binop($1, Div, $3) }
+  | expr MOD expr { Binop($1, Mod, $3) }
+  | expr EQ  expr { Binop($1, Eq, $3) }  
+  | expr NEQ  expr { Binop($1, Neq, $3) }
+  | expr GEQ  expr { Binop($1, Geq, $3) }
+  | expr GT  expr { Binop($1, Gt, $3) }
+  | expr LEQ  expr { Binop($1, Leq, $3) }
+  | expr LT  expr { Binop($1, Lt, $3) }
+  | expr AND  expr { Binop($1, And, $3) }
+  | expr OR  expr { Binop($1, Or, $3) }
+  | STRING_L           { StringLit($1) }
+  | FLOAT_L           { FloatLit($1) }
+  | INT_L             { IntLit($1)  }
+  | BOOL_L            { BoolLit($1)  }
+  | ID               { Id($1) }
+  | LBRACKET array_opt RBRACKET          { ArrayLit(List.rev $2) } 
+  | ID LPAREN expr_list RPAREN { Call($1, $3)  }
+  | vname ASSIGN expr {AssignOp($1, $3)}
+  | ID LBRACKET INT_L RBRACKET ASSIGN expr {ArrayAssignOp(Id($1), IntLit($3), $6)}
+  | ID LBRACKET INT_L RBRACKET {ArrayIndex(Id($1), IntLit($3))}
 
 expr_list:
-  expr { [$1] }
-| expr COMMA expr_list { $1 :: $3 }
+    expr { [$1] }
+  | expr COMMA expr_list { $1 :: $3 }
+
+array_opt:
+    { [] } 
+  | expr { [$1] }
+  | array_opt COMMA expr { $3 :: $1 }
 
 dtype:
-    | INT { Int }
-    | FLOAT { Float }
-    | BOOL { Bool }
-    | STRING { String }
-    | VOID { Void }
+  | INT { Int }
+  | FLOAT { Float }
+  | BOOL { Bool }
+  | STRING { String }
+  | VOID { Void }
+  | ARRAY dtype { Array($2) }

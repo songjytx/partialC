@@ -62,12 +62,42 @@ let check (functions) =
       | FloatLit l -> (Float, SFloatLit l, map)
       | BoolLit l  -> (Bool, SBoolLit l, map)
       | StringLit l -> (String, SStringLit l, map)
+      | ArrayLit(l) ->
+        let array_body = List.map (check_expr map) l in 
+        let array_type, _, _ = List.nth array_body 0 in
+            (Array array_type, SArrayLit(List.map (fun (t, sx, _) -> (t,sx)) array_body), map)
+      (* Yet to check whether all elements in the array are the same *)
+
+      | ArrayIndex(name, idx) ->
+          let (typ, sid, map1) = match name with
+                Id i ->  check_expr map name
+          in
+          let (idx_type, sindex, map2) = match idx with
+                IntLit l-> check_expr map1 idx
+          in
+          let element_type = match typ with
+                Array(t) -> t
+          in
+(*           let _ = print_string (string_of_typ typ) in *)
+          (element_type, SArrayIndex((typ, sid), (idx_type, sindex)), map2)
+
+
       | Noexpr     -> (Void, SNoexpr, map)
       | Id s       -> (type_of_identifier s map, SId s, map)
       | AssignOp(v, e)-> 
         let lt, vname, map1 = find_name v map "assignment error" in
         let rt, ex, map2 = check_expr map1 e in
         (check_assign lt rt "type miss match", SAssignOp((lt, vname), (rt, ex)), map2)
+
+      | ArrayAssignOp(v, i, e)-> 
+        let lt, vname, map1 = find_name v map "assignment error" in
+        let rt, ex, map2 = check_expr map1 e in
+        let it, ix, map3 = check_expr map2 i in
+        let element_type = match lt with
+            Array(t) -> t
+        in
+        (check_assign element_type rt "array type miss match", SArrayAssignOp((lt, vname), (it, ix),(rt, ex)), map3)
+
       | Call(fname, args) as call -> 
           let fd = find_func fname in
           let param_length = List.length fd.formals in

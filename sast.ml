@@ -4,12 +4,15 @@ type sexpr = typ * sx
 and sx = 
     SBinop of sexpr * operator * sexpr
   | SAssignOp of sexpr * sexpr
+  | SArrayAssignOp of sexpr * sexpr * sexpr
   | SLit of int
   | SVar of string
   | SStringLit of string
   | SFloatLit of float
   | SIntLit of int
   | SBoolLit of bool
+  | SArrayLit of sexpr list
+  | SArrayIndex of sexpr * sexpr
   | SId of string
   | SCall of string * sexpr list
   | SNoexpr
@@ -41,9 +44,12 @@ let rec string_of_sexpr (sex:sexpr) = match snd sex with
     SNoexpr -> ""
   | SLit(i) -> string_of_int i
   | SStringLit(s) -> s
+  | SArrayLit(l) -> "[" ^ (String.concat ", " (List.map string_of_sexpr l)) ^ "]"
+  | SArrayIndex(v, i) -> string_of_sexpr v ^ "[" ^ string_of_sexpr i ^ "]"
   | SCall(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SId(s) -> s
   | SAssignOp(v, e) -> string_of_sexpr v ^ " = " ^ string_of_sexpr e
+  | SArrayAssignOp(v, i, e) -> string_of_sexpr v ^  "[" ^ string_of_sexpr i ^ "]"^" = " ^ string_of_sexpr e
   | SNoexpr -> ""
   | _ -> "NOT FOUND"
 
