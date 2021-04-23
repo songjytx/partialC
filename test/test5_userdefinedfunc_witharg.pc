@@ -1,8 +1,8 @@
-void testcall(){
+void testcall(int a){
 	prints('called');
-	//printi(a);
+	printi(a);
 }
 
 void main(){
-	testcall();
+	testcall(3);
 }
