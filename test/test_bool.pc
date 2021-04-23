@@ -1,0 +1,8 @@
+void main(){
+	bool a = false;
+	if(a){
+		printi(1);
+	}else{
+
+	}
+}
