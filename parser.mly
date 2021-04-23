@@ -106,14 +106,18 @@ expr:
   | BOOL_L            { BoolLit($1)  }
   | ID               { Id($1) }
   | LBRACKET array_opt RBRACKET          { ArrayLit(List.rev $2) } 
-  | ID LPAREN expr_list RPAREN { Call($1, $3)  }
+  | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | vname ASSIGN expr {AssignOp($1, $3)}
   | ID LBRACKET INT_L RBRACKET ASSIGN expr {ArrayAssignOp(Id($1), IntLit($3), $6)}
   | ID LBRACKET INT_L RBRACKET {ArrayIndex(Id($1), IntLit($3))}
 
-expr_list:
-    expr { [$1] }
-  | expr COMMA expr_list { $1 :: $3 }
+args_opt:
+    /* nothing */ { [] }
+  | args_list  { List.rev $1 }
+
+args_list:
+    expr                    { [$1] }
+  | args_list COMMA expr { $3 :: $1 }
 
 array_opt:
     { [] } 
