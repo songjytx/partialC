@@ -67,9 +67,9 @@ let translate (functions) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    let char_format_str = L.build_global_stringptr "%s" "" builder
-    and int_format_str = L.build_global_stringptr "%d" "" builder 
-    and float_format_str = L.build_global_stringptr "%f" "" builder in
+    let char_format_str = L.build_global_stringptr "%s\n" "" builder
+    and int_format_str = L.build_global_stringptr "%d\n" "" builder 
+    and float_format_str = L.build_global_stringptr "%f\n" "" builder in
 
     let local_vars =
       let add_formal m (t, n) p = 
