@@ -22,6 +22,7 @@ let check (functions) =
   let built_in_funcs = List.fold_left add_func StringMap.empty [
       {typ = Void; fname = "prints"; formals = [(String, "args")];  fstmts = [] };
       {typ = Void; fname = "printi"; formals = [(Int, "args")];  fstmts = [] };
+      {typ = Void; fname = "printf"; formals = [(Float, "args")];  fstmts = [] };
       ] 
   in
 

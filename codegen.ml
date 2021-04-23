@@ -203,6 +203,9 @@ let translate (functions) =
       | SCall ("printi", [e]) -> 
         let e', _, builder = expr map builder e in L.build_call printf_func [| int_format_str ; e' |] "printf" builder, map, builder
 
+      | SCall ("printf", [e]) -> 
+        let e', _, builder = expr map builder e in L.build_call printf_func [| float_format_str ; e' |] "printf" builder, map, builder
+
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
     	  let llargs = List.map (fun(a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev args))) in
