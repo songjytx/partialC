@@ -71,9 +71,21 @@ let translate (functions) =
     and int_format_str = L.build_global_stringptr "%d" "" builder 
     and float_format_str = L.build_global_stringptr "%f" "" builder in
 
+    let local_vars =
+      let add_formal m (t, n) p = 
+        L.set_value_name n p;
+      let local = L.build_alloca (ltype_of_typ t) n builder in
+          ignore (L.build_store p local builder);
+          StringMap.add n local m 
+      in
+
+      List.fold_left2 add_formal StringMap.empty fdecl.sformals
+          (Array.to_list (L.params the_function)) in
+
     let lookup map n : L.llvalue = match StringMap.find_opt n map with
         Some v -> v 
-      | None -> report_error( "Couldn't find " ^ n)
+      | None -> try StringMap.find n local_vars
+                with Not_found -> report_error("Could not find " ^ n)
     in
 
     (* Construct code for an expression; return its value *)
@@ -174,6 +186,7 @@ let translate (functions) =
     	  | A.Sub     -> L.build_sub
     	  | A.Mul     -> L.build_mul
         | A.Div     -> L.build_sdiv
+        (* | A.Mod     -> L.const_srem *)
     	  | A.And     -> L.build_and
     	  | A.Or      -> L.build_or
     	  | A.Eq   -> L.build_icmp L.Icmp.Eq
@@ -197,6 +210,10 @@ let translate (functions) =
                             A.Void -> ""
                           | _ -> f ^ "_result") in
              L.build_call fdef (Array.of_list llargs) result builder, map, builder
+      (* | SCall(name, exl) -> let (ldef, fd) = StringMap.find name function_decls in
+        let args = List.map (fun (a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev exl))) in
+        let call = L.build_call ldef (Array.of_list args) "" builder in
+        (call, map, builder) *)
     in
     
     (* LLVM insists each basic block end with exactly one "terminator" 

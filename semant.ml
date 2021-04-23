@@ -123,7 +123,7 @@ let check (functions) =
                   Add -> t1
                   | _ -> make_err ("Illegal binary operation, cannot perform "^string_of_expr ex^" on lists.")) *)
         _ -> match op with
-              Add | Sub | Mul | Div      when same && t1 = Int   -> Int
+                Add | Sub | Mul | Div | Mod    when same && t1 = Int   -> Int
               | Add | Sub | Mul | Div    when same && t1 = Float -> Float
               | Add                      when same && t1 = String -> String
               | Eq | Neq                 when same               -> Bool
