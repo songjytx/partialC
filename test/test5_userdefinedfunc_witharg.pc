@@ -1,8 +1,15 @@
-void testcall(int a){
-	prints('called');
-	printi(a);
+int  testcall(int b){
+	b = b + 1;
+	printi(b);
+	if(b > 5){
+		return 0;
+	}else{
+		testcall(b);
+	}
 }
 
 void main(){
-	testcall(3);
+	int i=0;
+	
+	testcall(0);
 }

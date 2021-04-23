@@ -1,4 +1,6 @@
 void main(){
 	int a = 1 - 2;
 	printi(a);
+	float b = 6.2 - 13.1;
+	printf(b);
 }
