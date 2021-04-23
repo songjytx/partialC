@@ -1,0 +1,8 @@
+void testcall(){
+	prints('called');
+	//printi(a);
+}
+
+void main(){
+	testcall();
+}
