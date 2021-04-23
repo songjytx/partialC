@@ -1,0 +1,7 @@
+void main(){
+	arr int a = [1,2,3];
+	arr int b = a;
+	b[0] = 0;
+	printi(a[0]);
+
+}
