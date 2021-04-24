@@ -39,12 +39,12 @@ let check (functions) =
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
   let check_function func =
-    let add_var map ventry = 
-        let name = snd ventry in
+    let add_var map (tp, name, len) = 
+        (* let name = snd ventry in *)
         let dup_err = "Variable with name " ^ name ^" is a duplicate." in
-        match ventry with
+        match (tp, name) with
         _ when StringMap.mem name map -> raise (Failure dup_err)
-        | _ -> StringMap.add name ventry map
+        | _ -> StringMap.add name (tp, name) map
     in
     
     let find_var map name =
@@ -158,7 +158,11 @@ let check (functions) =
 
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)
-        let new_map = add_var map' (t, id) in
+        let len = match e with
+          Ast.ArrayLit t -> ignore(print_string ("" ^ string_of_int (List.length t))); List.length t 
+        | _ -> 0
+        in
+        let new_map = add_var map' (t, id, len) in
         (* let _=print_string id in *)
         let right = (right_t, sx) in
         (SVarDecl(t, id, right), new_map)
@@ -168,7 +172,10 @@ let check (functions) =
         let (ty', e1', _) = check_expr map e1 in
           if ty' != Ast.Int then raise ( Failure ("Integer is expected instead of " ^ string_of_typ t))
         else 
-          let new_map = add_var map (t, id) in
+          let len = match e1 with
+          Ast.IntLit t -> t
+          in
+          let new_map = add_var map (t, id, len) in
           let (t2, sx2, map') = check_expr map Noexpr in
           let r2 = (t2, sx2) in
           (SArrayDecl(t, id, (ty', e1'), r2), new_map)
