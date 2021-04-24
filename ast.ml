@@ -8,7 +8,6 @@ type expr =
   | Not of expr
   | AssignOp of expr * expr
   | ArrayAssignOp of expr * expr * expr
-  | Lit of int
   | Var of string
   | StringLit of string
   | FloatLit of float
@@ -25,9 +24,9 @@ type bind = typ * string
 type stmt = 
 	  Block of stmt list
 	| VarDecl of typ * string * expr
-  | ArrayDecl of typ * string * int * expr
+  | ArrayDecl of typ * string * expr * expr
 	| If of expr * stmt * stmt
-	| For of expr * expr * expr * stmt
+	| For of stmt * expr * expr * stmt
 	| While of expr * stmt
 	| Print of expr
 	| Return of expr
@@ -91,10 +90,10 @@ let rec string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | VarDecl(t, s1, Noexpr) ->  string_of_typ t ^" " ^s1 ^ ";\n" 
   | VarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_expr e1 ^ ";\n"
-  | ArrayDecl(t, v, i, Noexpr) -> string_of_typ t ^ " " ^ v ^  "[" ^ string_of_int i ^ "];\n"
+  | ArrayDecl(t, v, e, Noexpr) -> string_of_typ t ^ " " ^ v ^  "[" ^ string_of_expr e ^ "];\n"
   |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s1  ^ "else\n" ^ string_of_stmt s2
   | For(e1, e2, e3, s) ->
-      "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^ string_of_expr e3  ^ ") " ^ string_of_stmt s
+      "for (" ^ string_of_stmt e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^ string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | Return(e) -> "return " ^ string_of_expr e
   | _ -> "Statement Not Matched??"

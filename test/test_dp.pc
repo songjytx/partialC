@@ -1,0 +1,14 @@
+void main(){
+    int target = 9;
+    arr int f[10];
+ 
+    f[0] = 0;
+    f[1] = 1;
+ 
+    for(int i = 2; i <= target; i=i+1)
+    {
+         
+       f[i] = f[i - 1] + f[i - 2];
+    }
+    printi(f[target]);
+}

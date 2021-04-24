@@ -79,11 +79,11 @@ stmt:
 | dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) }
 | dtype ID SEMI { VarDecl($1, $2, Noexpr) }
 | IF LPAREN expr RPAREN stmt ELSE stmt  { If($3, $5, $7) }
-| FOR LPAREN expr SEMI expr SEMI expr RPAREN stmt { For($3, $5, $7, $9) }
+| FOR LPAREN stmt expr SEMI expr RPAREN stmt { For($3, $4, $6, $8) }
 | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
 | RETURN expr SEMI { Return($2) }
 | LBRACE stmt_list RBRACE { Block(List.rev $2)}
-| dtype ID LBRACKET INT_L RBRACKET SEMI{ ArrayDecl($1, $2, $4, Noexpr) }
+| dtype ID LBRACKET expr RBRACKET SEMI{ ArrayDecl($1, $2, $4, Noexpr) }
 
 
 expr:
@@ -110,8 +110,8 @@ expr:
   | LBRACKET array_opt RBRACKET          { ArrayLit(List.rev $2) } 
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | vname ASSIGN expr {AssignOp($1, $3)}
-  | ID LBRACKET INT_L RBRACKET ASSIGN expr {ArrayAssignOp(Id($1), IntLit($3), $6)}
-  | ID LBRACKET INT_L RBRACKET {ArrayIndex(Id($1), IntLit($3))}
+  | ID LBRACKET expr RBRACKET ASSIGN expr {ArrayAssignOp(Id($1), $3, $6)}
+  | ID LBRACKET expr RBRACKET {ArrayIndex(Id($1), $3)}
 
 args_opt:
     /* nothing */ { [] }

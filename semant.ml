@@ -59,7 +59,7 @@ let check (functions) =
     in
 
     let rec check_expr map e = match e with
-        IntLit  l -> (Int, SLit l, map)
+        IntLit  l -> (Int, SIntLit l, map)
       | FloatLit l -> (Float, SFloatLit l, map)
       | BoolLit l  -> (Bool, SBoolLit l, map)
       | StringLit l -> (String, SStringLit l, map)
@@ -73,9 +73,7 @@ let check (functions) =
           let (typ, sid, map1) = match name with
                 Id i ->  check_expr map name
           in
-          let (idx_type, sindex, map2) = match idx with
-                IntLit l-> check_expr map1 idx
-          in
+          let (idx_type, sindex, map2) = check_expr map1 idx in
           let element_type = match typ with
                 Array(t) -> t
           in
@@ -94,8 +92,10 @@ let check (functions) =
         let lt, vname, map1 = find_name v map "assignment error" in
         let rt, ex, map2 = check_expr map1 e in
         let it, ix, map3 = check_expr map2 i in
-        let element_type = match lt with
+        let element_type = (match lt with
             Array(t) -> t
+            | _ -> raise (Failure ("got " ^ string_of_typ lt))
+            )
         in
         (check_assign element_type rt "array type miss match", SArrayAssignOp((lt, vname), (it, ix),(rt, ex)), map3)
 
@@ -159,15 +159,19 @@ let check (functions) =
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)
         let new_map = add_var map' (t, id) in
+        (* let _=print_string id in *)
         let right = (right_t, sx) in
         (SVarDecl(t, id, right), new_map)
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
-      | ArrayDecl(t, id, i, e) ->
-        let new_map = add_var map (t, id) in
-        let (t2, sx2, map') = check_expr map Noexpr in
-        let r2 = (t2, sx2) in
-        (SArrayDecl(t, id, i, r2), new_map)
+      | ArrayDecl(t, id, e1, e) ->
+        let (ty', e1', _) = check_expr map e1 in
+          if ty' != Ast.Int then raise ( Failure ("Integer is expected instead of " ^ string_of_typ t))
+        else 
+          let new_map = add_var map (t, id) in
+          let (t2, sx2, map') = check_expr map Noexpr in
+          let r2 = (t2, sx2) in
+          (SArrayDecl(t, id, (ty', e1'), r2), new_map)
 
       | Block sl -> 
         let rec check_stmt_list map sl = match sl with
@@ -180,8 +184,9 @@ let check (functions) =
           | []              -> ([], map)
         in (SBlock(fst (check_stmt_list map sl)), map)
       | While(cond, stmtList) -> SWhile(check_bool_expr map cond, fst (check_stmt map stmtList)), map
-      | For(e1, e2, e3, stmtList) -> let (ty1, sx1, m') = check_expr map e1 in let (ty3, sx3, m'') = check_expr m' e3 in
-        SFor((ty1, sx1), check_bool_expr map e2, (ty3, sx3), fst (check_stmt map stmtList)), map
+      | For(e1, e2, e3, stmtList) -> let (st1, m') = check_stmt map e1 in 
+                                     let (ty3, sx3, m'') = check_expr m' e3 in
+                                     SFor(st1, check_bool_expr m'' e2, (ty3, sx3), fst (check_stmt m'' stmtList)), m''
       | If(cond, s1, s2) -> 
         let sthen, _ = check_stmt map s1 in
         let selse, _ = check_stmt map s2 in

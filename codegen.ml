@@ -92,7 +92,7 @@ let translate (functions) =
 
     (* Construct code for an expression; return its value *)
     let rec expr map builder ((_, expression) : sexpr) = match expression with
-        SLit i  -> L.const_int i32_t i, map, builder  
+        SIntLit i  -> L.const_int i32_t i, map, builder  
       | SFloatLit f -> L.const_float float_t f, map, builder
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0), map, builder
       | SStringLit s -> let alloc = L.build_alloca string_t "alloc" builder in 
@@ -254,16 +254,19 @@ let translate (functions) =
           let _ = L.build_store rval addr builder in 
           (builder, m'')
 
-      | SArrayDecl(t, v, i, e) -> 
+      | SArrayDecl(t, v, e1, e) -> 
 
-        
           let llvm_ty = ltype_of_typ t in
           (* ID *)
           let addr = L.build_alloca llvm_ty v builder in
           (* space for ID *)            
           let alloc = L.build_alloca llvm_ty "alloc" builder in
           let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
-           let len = i in
+           let len = (match e1 with
+            (* _, SId s -> lookup map s *)
+            _, SIntLit i -> i
+          )
+           in 
            let cap = len * 2 in 
            let data_loc = L.build_array_alloca (ltype_of_array_element t) (const_i32_of cap) "data_loc" builder
            in
@@ -288,7 +291,7 @@ let translate (functions) =
           ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
           L.builder_at_end context merge_bb, m'
 
-      | SFor(e1, e2, e3, stmtList) -> stmt map builder ( SBlock [SExpr e1 ; SWhile (e2, SBlock [stmtList ; SExpr e3]) ] )
+      | SFor(e1, e2, e3, stmtList) -> stmt map builder ( SBlock [ e1 ; SWhile (e2, SBlock [stmtList ; SExpr e3]) ] )
       | SIf(e, s1, s2) -> 
         let bool_val, m', builder = expr map builder e in
         let merge_bb = L.append_block context "merge" the_function in
