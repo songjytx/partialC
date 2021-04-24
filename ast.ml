@@ -25,6 +25,7 @@ type bind = typ * string
 type stmt = 
 	  Block of stmt list
 	| VarDecl of typ * string * expr
+  | ArrayDecl of typ * string * int * expr
 	| If of expr * stmt * stmt
 	| For of expr * expr * expr * stmt
 	| While of expr * stmt
@@ -88,8 +89,9 @@ let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
-  | VarDecl(t, s1, Noexpr) ->  let _ = print_string("no expre") in string_of_typ t ^" " ^s1 ^ ";\n" 
+  | VarDecl(t, s1, Noexpr) ->  string_of_typ t ^" " ^s1 ^ ";\n" 
   | VarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_expr e1 ^ ";\n"
+  | ArrayDecl(t, v, i, Noexpr) -> string_of_typ t ^ " " ^ v ^  "[" ^ string_of_int i ^ "];\n"
   |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s1  ^ "else\n" ^ string_of_stmt s2
   | For(e1, e2, e3, s) ->
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^ string_of_expr e3  ^ ") " ^ string_of_stmt s

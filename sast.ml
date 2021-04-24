@@ -22,6 +22,7 @@ type sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
   | SVarDecl of typ * string * sexpr
+  | SArrayDecl of typ * string * int * sexpr
   | SIf of sexpr * sstmt * sstmt
   | SFor of sexpr * sexpr * sexpr * sstmt
   | SWhile of sexpr * sstmt
@@ -66,6 +67,7 @@ let rec string_of_sstmt = function
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n";
   (* | SVarDecl(t, s1, SNoexpr) -> string_of_typ t ^" " ^s1 ^ ";\n" *)
   | SVarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_sexpr e1 ^ ";\n"
+  | SArrayDecl(t, v, i, e) -> string_of_typ t ^ " " ^ v ^  "[" ^ string_of_int i ^ "];\n"
   | SIf(e, s1, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s1 ^ "else\n" ^ string_of_sstmt s2
   | SFor(e1, e2, e3, s) ->
       "for (" ^ string_of_sexpr e1  ^ " ; " ^ string_of_sexpr e2 ^ " ; " ^ string_of_sexpr e3  ^ ") " ^ string_of_sstmt s

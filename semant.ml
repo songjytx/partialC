@@ -163,6 +163,12 @@ let check (functions) =
         (SVarDecl(t, id, right), new_map)
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
+      | ArrayDecl(t, id, i, e) ->
+        let new_map = add_var map (t, id) in
+        let (t2, sx2, map') = check_expr map Noexpr in
+        let r2 = (t2, sx2) in
+        (SArrayDecl(t, id, i, r2), new_map)
+
       | Block sl -> 
         let rec check_stmt_list map sl = match sl with
             [Return _ as s] -> ([fst (check_stmt map s)], map)

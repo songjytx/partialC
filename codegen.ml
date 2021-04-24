@@ -48,7 +48,9 @@ let translate (functions) =
     | A.String -> string_t
     | A.Array a -> array_t (ltype_of_typ a)
   in
-
+  let rec ltype_of_array_element = function
+  A.Array a -> ltype_of_typ a
+  in
   let printf_t = L.var_arg_function_type i32_t [| (L.pointer_type char_t)|] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
@@ -106,17 +108,17 @@ let translate (functions) =
 
       | SArrayLit a -> let llvm_ty = ltype_of_typ (fst (List.hd a))in
                        let ty = array_t llvm_ty in 
-                       let alloc = L.build_alloca ty "array" builder in
-                       let data_field_loc = L.build_struct_gep alloc 0 "" builder in
+                       let alloc = L.build_alloca ty "alloc" builder in
+                       let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
 (*                     let len_loc = L.build_struct_gep alloc 1 "" builder in
                        let cap_loc = L.build_struct_gep alloc 2 "" builder in *)
                        let len = List.length a in
                        let cap = len * 2 in 
-                       let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "" builder
+                       let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder
                        in
                        let sto (acc, builder) ex = 
                          let value, m', builder = expr map builder ex in
-                         let item_loc = L.build_gep data_loc [|const_i32_of acc |] "" builder in
+                         let item_loc = L.build_gep data_loc [|const_i32_of acc |] "item_loc" builder in
                          let _ = L.build_store value item_loc builder in
                          (acc + 1, builder)
                        in
@@ -124,7 +126,7 @@ let translate (functions) =
                        let _ = L.build_store data_loc data_field_loc builder in
 (*                     let _ = L.build_store (const_i32_of len) len_loc builder in
                        let _ = L.build_store (const_i32_of cap) cap_loc builder in *)
-                       let value = L.build_load alloc "" builder 
+                       let value = L.build_load alloc "value" builder 
                      in (value, map, builder)
 
       | SArrayIndex(id, idx) -> 
@@ -251,6 +253,29 @@ let translate (functions) =
 
           let _ = L.build_store rval addr builder in 
           (builder, m'')
+
+      | SArrayDecl(t, v, i, e) -> 
+
+        
+          let llvm_ty = ltype_of_typ t in
+          (* ID *)
+          let addr = L.build_alloca llvm_ty v builder in
+          (* space for ID *)            
+          let alloc = L.build_alloca llvm_ty "alloc" builder in
+          let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
+           let len = i in
+           let cap = len * 2 in 
+           let data_loc = L.build_array_alloca (ltype_of_array_element t) (const_i32_of cap) "data_loc" builder
+           in
+           let m' = StringMap.add v addr map in
+           let _ = L.build_store data_loc data_field_loc builder in
+
+           let value = L.build_load alloc "value" builder in 
+           let dl = lookup m' v in
+           let _ = L.build_store value dl builder in 
+           (* ignore(L.build_store value (lookup m' v) builder);  *)
+           (builder, m')
+
       | SWhile(condition, stmtList) ->
           let pred_bb = L.append_block context "while" the_function in
           ignore(L.build_br pred_bb builder);
@@ -262,6 +287,7 @@ let translate (functions) =
           let merge_bb = L.append_block context "merge" the_function in
           ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
           L.builder_at_end context merge_bb, m'
+
       | SFor(e1, e2, e3, stmtList) -> stmt map builder ( SBlock [SExpr e1 ; SWhile (e2, SBlock [stmtList ; SExpr e3]) ] )
       | SIf(e, s1, s2) -> 
         let bool_val, m', builder = expr map builder e in

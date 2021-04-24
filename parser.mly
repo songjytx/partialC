@@ -83,7 +83,7 @@ stmt:
 | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
 | RETURN expr SEMI { Return($2) }
 | LBRACE stmt_list RBRACE { Block(List.rev $2)}
-
+| dtype ID LBRACKET INT_L RBRACKET SEMI{ ArrayDecl($1, $2, $4, Noexpr) }
 
 
 expr:

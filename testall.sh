@@ -8,3 +8,5 @@ for file in ./test/*.pc;
 		cc -o test.exe test.s
 		./test.exe
 	done
+
+
