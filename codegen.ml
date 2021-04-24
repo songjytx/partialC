@@ -102,10 +102,7 @@ let translate (functions) =
                         let str_global = L.build_global_string s "str_global" builder in
                         let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
                         let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
-                        (* let str_len = L.const_int i32_t (String.length s) in *)
-                        (* let len_loc = L.build_struct_gep alloc 1 "" builder in  *)
                         let _ = L.build_store str str_field_loc builder in
-                        (* let _ = L.build_store str_len len_loc builder in *)
                         let value = L.build_load alloc "" builder
                       in (value, map, builder)
 
@@ -113,8 +110,6 @@ let translate (functions) =
                        let ty = array_t llvm_ty in 
                        let alloc = L.build_alloca ty "alloc" builder in
                        let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
-(*                     let len_loc = L.build_struct_gep alloc 1 "" builder in
-                       let cap_loc = L.build_struct_gep alloc 2 "" builder in *)
                        let len = List.length a in
                        let cap = len * 2 in 
                        let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder
@@ -127,8 +122,6 @@ let translate (functions) =
                        in
                        let _, builder = List.fold_left sto (0, builder) a in
                        let _ = L.build_store data_loc data_field_loc builder in
-(*                     let _ = L.build_store (const_i32_of len) len_loc builder in
-                       let _ = L.build_store (const_i32_of cap) cap_loc builder in *)
                        let value = L.build_load alloc "value" builder 
                      in (value, map, builder)
 
