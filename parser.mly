@@ -115,7 +115,7 @@ expr:
 
 args_opt:
     /* nothing */ { [] }
-  | args_list  { List.rev $1 }
+  | args_list  { $1 }
 
 args_list:
     expr                    { [$1] }

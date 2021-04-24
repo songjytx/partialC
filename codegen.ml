@@ -54,6 +54,9 @@ let translate (functions) =
   let printf_t = L.var_arg_function_type i32_t [| (L.pointer_type char_t)|] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
+  let string_concat_t : L.lltype = L.function_type string_t [| string_t; string_t |] in
+  let string_concat_f : L.llvalue = L.declare_function "strcat" string_concat_t the_module in
+
   (* Define each function (arguments and return type) so we can 
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -162,7 +165,7 @@ let translate (functions) =
                     (rval, m', builder)
       | SNot (e) -> 
         let (e', _, _) = expr map builder e in
-        L.build_not e' "tmp" builder, map, builder
+        L.build_not e' "not operation" builder, map, builder
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in
@@ -179,8 +182,17 @@ let translate (functions) =
     	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
     	  | A.And | A.Or ->
     	      raise (Failure "internal error: semant should have rejected and/or on float")
-    	  ) e1' e2' "tmp" builder, map, builder
-
+    	  ) e1' e2' "float op" builder, map, builder
+      (* | SBinop ((A.String,_ ) as e1, op, e2) ->
+        let (e1', _, _) = expr map builder e1
+        and (e2', _, _) = expr map builder e2 in
+        (match op with
+           A.Add     -> L.build_call string_concat_f [| e1'; e2' |] "string_concat" builder, map, builder
+         | _ -> raise (Failure ("operation " ^ (A.string_of_op op) ^ " not supported"))) *)
+      | SBinop (e1, A.Mod, e2) -> 
+        let (e1', _, _) = expr map builder e1
+        and (e2', _, _) = expr map builder e2 in
+        L.const_srem e1' e2', map, builder
       | SBinop (e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in
@@ -189,7 +201,6 @@ let translate (functions) =
     	  | A.Sub     -> L.build_sub
     	  | A.Mul     -> L.build_mul
         | A.Div     -> L.build_sdiv
-        (* | A.Mod     -> L.const_srem *)
     	  | A.And     -> L.build_and
     	  | A.Or      -> L.build_or
     	  | A.Eq   -> L.build_icmp L.Icmp.Eq
@@ -198,7 +209,7 @@ let translate (functions) =
     	  | A.Leq     -> L.build_icmp L.Icmp.Sle
     	  | A.Gt -> L.build_icmp L.Icmp.Sgt
     	  | A.Geq     -> L.build_icmp L.Icmp.Sge
-    	  ) e1' e2' "tmp" builder, map, builder
+    	  ) e1' e2' "general op" builder, map, builder
 
       | SCall ("prints", [e]) -> 
         let e', _, builder = expr map builder e in L.build_call printf_func [| char_format_str ; e' |] "printf" builder, map, builder
