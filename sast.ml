@@ -3,6 +3,7 @@ open Ast
 type sexpr = typ * sx 
 and sx = 
     SBinop of sexpr * operator * sexpr
+  | SNot of sexpr
   | SAssignOp of sexpr * sexpr
   | SArrayAssignOp of sexpr * sexpr * sexpr
   | SLit of int

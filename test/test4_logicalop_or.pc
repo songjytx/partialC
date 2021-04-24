@@ -1,0 +1,19 @@
+void main(){
+	bool a = true;
+	bool b = false;
+	if(a || b){
+		prints('correct');
+	}else{
+		prints('wrong');
+	}
+	if(a || a){
+		prints('correct');
+	}else{
+		prints('wrong');
+	}
+	if(b || b){
+		prints('wrong');
+	}else{
+		prints('correct');
+	}
+}

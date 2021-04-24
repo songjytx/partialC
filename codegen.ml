@@ -158,8 +158,9 @@ let translate (functions) =
                       let addr = L.build_gep data_loc [| ival |] "" builder  in
                       let _ = L.build_store rval addr builder in 
                     (rval, m', builder)
-
-
+      | SNot (e) -> 
+        let (e', _, _) = expr map builder e in
+        L.build_not e' "tmp" builder, map, builder
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in

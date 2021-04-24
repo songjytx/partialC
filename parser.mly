@@ -36,7 +36,7 @@
 %left GEQ GT LEQ LT
 %left PLUS MINUS
 %left TIMES DIVIDE MOD
-%right NOT NEGATE
+%right NOT
 %left LBRACKET RBRACKET
 %left LPAREN RPAREN
 
@@ -87,7 +87,8 @@ stmt:
 
 
 expr:
-    expr PLUS  expr { Binop($1, Add, $3) }
+    LPAREN expr RPAREN { $2 } 
+  | expr PLUS  expr { Binop($1, Add, $3) }
   | expr MINUS  expr { Binop($1, Sub, $3) }
   | expr TIMES  expr { Binop($1, Mul, $3) }
   | expr DIVIDE expr { Binop($1, Div, $3) }
@@ -100,6 +101,7 @@ expr:
   | expr LT  expr { Binop($1, Lt, $3) }
   | expr AND  expr { Binop($1, And, $3) }
   | expr OR  expr { Binop($1, Or, $3) }
+  | NOT expr           { Not($2) }
   | STRING_L           { StringLit($1) }
   | FLOAT_L           { FloatLit($1) }
   | INT_L             { IntLit($1)  }

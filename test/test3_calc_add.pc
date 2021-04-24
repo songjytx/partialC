@@ -1,5 +1,5 @@
 void main(){
-	int a = 4 + 2;
+	int a = 4 * ( 1 + 2 );
 	printi(a);
 	float b = 1.2 + 3.5;
 	printf(b);

@@ -5,6 +5,7 @@ type assignment = Assign
 type expr =
 
     Binop of expr * operator * expr
+  | Not of expr
   | AssignOp of expr * expr
   | ArrayAssignOp of expr * expr * expr
   | Lit of int

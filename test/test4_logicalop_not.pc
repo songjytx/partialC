@@ -1,0 +1,14 @@
+void main(){
+	bool a = true;
+	bool b = false;
+	if( !b ){
+		prints('correct');
+	}else{
+		prints('wrong');
+	}
+	if( !a ){
+		prints('wrong');
+	}else{
+		prints('correct');
+	}
+}

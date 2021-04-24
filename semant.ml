@@ -113,6 +113,10 @@ let check (functions) =
           in 
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'), map)
+      | Not(e) as notEx-> let (t, e', map') = check_expr map e in
+        if t != Bool then 
+          raise (Failure ("expecting bool expression in " ^ string_of_expr notEx))
+        else (Bool, SNot((t, e')), map')
       | Binop(e1, op, e2) as ex ->
         let (t1, e1', map') = check_expr map e1  
         in let (t2, e2', map'') = check_expr map' e2 

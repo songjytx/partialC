@@ -1,0 +1,13 @@
+void main(){
+	int a = 3;
+	if(a > 2){
+		prints('correct');
+	}else{
+		prints('wrong');
+	}
+	if(a > 5){
+		prints('wrong');
+	}else{
+		prints('correct');
+	}
+}
