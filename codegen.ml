@@ -213,6 +213,18 @@ let translate (functions) =
       | SCall ("printf", [e]) -> 
         let e', _, builder = expr map builder e in L.build_call printf_func [| float_format_str ; e' |] "printf" builder, map, builder
 
+      | SCall ("sizeof", [e]) -> 
+              (* let (a, b, c) = (match e with 
+                              _, SId i -> lookup map i)
+
+      in    | _ -> raise(Failure("Invalid input for sizeof function.")))      
+      L.const_int i32_t c, map, builder *)
+      let (e', _, builder) = expr map builder e  in
+      let length = L.array_length (L.type_of e') in
+      (* let _ = L.type_of ( e') in *)
+      L.const_int i32_t length, map, builder
+      (* L.const_int i32_t 20, map, builder *)
+
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
     	  let llargs = List.map (fun(a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev args))) in

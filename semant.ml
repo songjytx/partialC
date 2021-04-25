@@ -6,8 +6,6 @@ open Sast
 module StringMap = Map.Make(String)
 
 let check (functions) =
-  (**** Checking Functions ****)
-
   (* Add function name to symbol table *)
   let add_func map fd = 
     let built_in_err = "function " ^ fd.fname ^ " is a built-in function and may not be redefined"
@@ -23,6 +21,7 @@ let check (functions) =
       {typ = Void; fname = "prints"; formals = [(String, "args")];  fstmts = [] };
       {typ = Void; fname = "printi"; formals = [(Int, "args")];  fstmts = [] };
       {typ = Void; fname = "printf"; formals = [(Float, "args")];  fstmts = [] };
+      {typ = Int;  fname = "sizeof"; formals = [(Array(Int), "args")]; fstmts = [] }
       ] 
   in
 
@@ -43,8 +42,8 @@ let check (functions) =
         (* let name = snd ventry in *)
         let dup_err = "Variable with name " ^ name ^" is a duplicate." in
         match (tp, name) with
-        _ when StringMap.mem name map -> raise (Failure dup_err)
-        | _ -> StringMap.add name (tp, name) map
+          _ when StringMap.mem name map -> raise (Failure dup_err)
+        | _ -> StringMap.add name (tp, name, len) map
     in
     
     let find_var map name =
@@ -54,7 +53,9 @@ let check (functions) =
     let check_assign lvaluet rvaluet err =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in 
-    let type_of_identifier s symbols =  fst(try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s))) 
+    let type_of_identifier s symbols =  
+      let (ty, _, _) = try StringMap.find s symbols with Not_found -> raise( Failure("ID not found: " ^ s)) 
+    in ty
     (* let _ = print_string "check identifier map \n" in let _ = print_string ( snd (StringMap.find s symbols)^"\n") in *)
     in
 
@@ -68,18 +69,26 @@ let check (functions) =
         let array_type, _, _ = List.nth array_body 0 in
             (Array array_type, SArrayLit(List.map (fun (t, sx, _) -> (t,sx)) array_body), map)
       (* Yet to check whether all elements in the array are the same *)
-
       | ArrayIndex(name, idx) ->
-          let (typ, sid, map1) = match name with
-                Id i ->  check_expr map name
+          let stringName = match name with
+              Id i -> i
+            | _ -> raise(Failure("Invalid identifier for array: " ^ string_of_expr name)) in
+          let (typ, sid, map1) = check_expr map name
           in
           let (idx_type, sindex, map2) = check_expr map1 idx in
+          let _ = match sindex with 
+            SIntLit l ->               
+              let (_, _, size) = StringMap.find stringName map in 
+              if l > size && size != 0 then raise(Failure("Array Index out ouf bound: " ^ string_of_int l)) 
+              else l
+            | _ -> 0
+          in 
           let element_type = match typ with
-                Array(t) -> t
+              Array(t) -> t
+            | _ -> raise(Failure("Type is not expected: " ^ string_of_typ typ))
           in
 (*           let _ = print_string (string_of_typ typ) in *)
           (element_type, SArrayIndex((typ, sid), (idx_type, sindex)), map2)
-
 
       | Noexpr     -> (Void, SNoexpr, map)
       | Id s       -> (type_of_identifier s map, SId s, map)
@@ -89,9 +98,20 @@ let check (functions) =
         (check_assign lt rt "type miss match", SAssignOp((lt, vname), (rt, ex)), map2)
 
       | ArrayAssignOp(v, i, e)-> 
+        let stringName = match v with
+            Id i -> i
+          | _ -> raise(Failure("Invalid identifier for array: " ^ string_of_expr v)) in
         let lt, vname, map1 = find_name v map "assignment error" in
         let rt, ex, map2 = check_expr map1 e in
         let it, ix, map3 = check_expr map2 i in
+        let (idx_type, sindex, _) = check_expr map i in
+          let _ = match sindex with 
+            SIntLit l -> 
+              let (_, _, size) = StringMap.find stringName map in 
+              if l > size && size != 0 then raise(Failure("Array Index out ouf bound: " ^ string_of_int l)) 
+              else l
+            | _ -> 0
+          in 
         let element_type = (match lt with
             Array(t) -> t
             | _ -> raise (Failure ("got " ^ string_of_typ lt))
@@ -137,7 +157,7 @@ let check (functions) =
               | _ -> raise (Failure ("Illegal binary operator " ^ string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^ string_of_typ t2 ^ " in " ^ string_of_expr ex))
         in (ty, SBinop((t1, e1'), op, (t2, e2')), map'')
 
-    and find_name (name : expr) map err : (Ast.typ * Sast.sx * (Ast.typ * StringMap.key) StringMap.t) = match name with
+    and find_name (name : expr) map err = match name with
         Id _ -> check_expr map name
         | _ -> raise (Failure ("find name error"))
     in
@@ -159,7 +179,7 @@ let check (functions) =
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)
         let len = match e with
-          Ast.ArrayLit t -> ignore(print_string ("" ^ string_of_int (List.length t))); List.length t 
+          Ast.ArrayLit t -> (* ignore(print_string ("" ^ string_of_int (List.length t))); *) List.length t 
         | _ -> 0
         in
         let new_map = add_var map' (t, id, len) in
@@ -201,7 +221,7 @@ let check (functions) =
       | _ -> raise (Failure "Match failure")
 
     in (* body of check_function *)
-    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name (ty, name) m) StringMap.empty func.formals
+    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name (ty, name, 0) m) StringMap.empty func.formals
     in
       {
         styp = func.typ;
