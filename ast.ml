@@ -17,7 +17,7 @@ type expr =
   | Call of string * expr list
   | ArrayLit of expr list
   | ArrayIndex of expr * expr
-  | Noexpr
+  | Noexpr of typ
 
 type bind = typ * string
 
@@ -71,7 +71,7 @@ let string_of_op = function
   | Or -> "||"
 
 let rec string_of_expr = function
-	Noexpr -> ""
+	Noexpr(t) -> ""
 	| IntLit(i) -> string_of_int i
 	| StringLit(s) -> s
   | Call(f, el) ->
@@ -87,16 +87,16 @@ let rec string_of_expr = function
   | _ -> "no expression matched*******"
 
 let string_of_vdecl = function
-	  VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
+	  VarDecl(t, id, Noexpr(ty)) -> string_of_typ t ^ " " ^ id
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e
 
 let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
-  | VarDecl(t, s1, Noexpr) ->  string_of_typ t ^" " ^s1 ^ ";\n" 
+  | VarDecl(t, s1, Noexpr(ty)) ->  string_of_typ t ^" " ^s1 ^ ";\n" 
   | VarDecl(t, s1, e1) -> string_of_typ t ^" " ^s1 ^ " = " ^ string_of_expr e1 ^ ";\n"
-  | ArrayDecl(t, v, e, Noexpr) -> string_of_typ t ^ " " ^ v ^  "[" ^ string_of_expr e ^ "];\n"
+  | ArrayDecl(t, v, e, Noexpr(ty)) -> string_of_typ t ^ " " ^ v ^  "[" ^ string_of_expr e ^ "];\n"
   |	If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s1  ^ "else\n" ^ string_of_stmt s2
   | For(e1, e2, e3, s) ->
       "for (" ^ string_of_stmt e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^ string_of_expr e3  ^ ") " ^ string_of_stmt s

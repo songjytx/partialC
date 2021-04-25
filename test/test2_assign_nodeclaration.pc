@@ -1,0 +1,18 @@
+void main(){
+	int a;
+	printi(a);
+    float b;
+    printf(b);
+    bool c;
+    if(c){
+    	prints('correct');
+    }else{
+    	prints('wrong');
+    }
+    string d;
+    prints(d);
+
+    arr int e[2];
+    e = [2,3];
+    printi(e[0]);
+}

@@ -147,7 +147,30 @@ let translate (functions) =
                       let value = L.build_load i_addr "" builder in
                       (value, map, builder)
 
-      | SNoexpr     -> L.const_int i32_t 0, map, builder
+      | SNoexpr(t)     -> (match t with
+          A.Int -> L.const_int i32_t 0
+        | A.Float -> L.const_float float_t 0.0
+        | A.Bool -> L.const_int i1_t 1
+        | A.String -> let alloc = L.build_alloca string_t "alloc" builder in 
+                        let str_global = L.build_global_string "" "str_global" builder in
+                        let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
+                        let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
+                        let _ = L.build_store str str_field_loc builder in
+                        L.build_load alloc "" builder
+        | A.Array _ -> let llvm_ty = ltype_of_typ (fst (List.hd []))in
+                        let ty = array_t llvm_ty in 
+                        let alloc = L.build_alloca ty "alloc" builder in
+                        let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
+                        let len_loc = L.build_struct_gep alloc 1 "" builder in
+
+                        let len = 0 in
+                        let cap = len * 2 in 
+                        let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder
+                        in
+                        let _ = L.build_store data_loc data_field_loc builder in
+                        let _ = L.build_store (const_i32_of len) len_loc builder in
+                        L.build_load alloc "value" builder)
+      , map, builder
       | SId s       -> L.build_load (lookup map s) s builder, map, builder
       | SAssignOp (v, e) -> let (e1, map1, builder) = expr map builder e in (match (snd v) with
                             SId s -> 

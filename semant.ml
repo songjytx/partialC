@@ -104,7 +104,7 @@ let check (structs, functions) =
 (*           let _ = print_string (string_of_typ typ) in *)
           (element_type, SArrayIndex((typ, sid), (idx_type, sindex)), map2)
 
-      | Noexpr     -> (Void, SNoexpr, map)
+      | Noexpr(ty)     -> (ty, SNoexpr(ty), map)
       | Id s       -> (type_of_identifier s map, SId s, map)
       | AssignOp(v, e)-> 
         let lt, vname, map1 = find_name v map "assignment error" in
@@ -210,7 +210,7 @@ let check (structs, functions) =
           Ast.IntLit t -> t
           in
           let new_map = add_var map (t, id, len) in
-          let (t2, sx2, map') = check_expr map Noexpr in
+          let (t2, sx2, map') = check_expr map e in
           let r2 = (t2, sx2) in
           (SArrayDecl(t, id, (ty', e1'), r2), new_map)
 

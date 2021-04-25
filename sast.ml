@@ -15,7 +15,7 @@ and sx =
   | SArrayIndex of sexpr * sexpr
   | SId of string
   | SCall of string * sexpr list
-  | SNoexpr
+  | SNoexpr of typ
 
 type sstmt = 
     SBlock of sstmt list
@@ -42,7 +42,7 @@ type sprogram = sfunc_decl list
 (* pretty printing function*)
 
 let rec string_of_sexpr (sex:sexpr) = match snd sex with 
-    SNoexpr -> ""
+    SNoexpr(t) -> ""
   | SIntLit(i) -> string_of_int i
   | SStringLit(s) -> s
   | SArrayLit(l) -> "[" ^ (String.concat ", " (List.map string_of_sexpr l)) ^ "]"
@@ -51,11 +51,10 @@ let rec string_of_sexpr (sex:sexpr) = match snd sex with
   | SId(s) -> s
   | SAssignOp(v, e) -> string_of_sexpr v ^ " = " ^ string_of_sexpr e
   | SArrayAssignOp(v, i, e) -> string_of_sexpr v ^  "[" ^ string_of_sexpr i ^ "]"^" = " ^ string_of_sexpr e
-  | SNoexpr -> ""
   | _ -> "NOT FOUND"
 
 let string_of_svdecl = function
-    VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id
+    VarDecl(t, id, Noexpr(ty)) -> string_of_typ t ^ " " ^ id
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^ " = "
 (*Mingjie, please fix bug here*)
 

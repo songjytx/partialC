@@ -86,13 +86,13 @@ stmt_list:
 stmt:
   expr SEMI  {Expr $1}
 | dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) }
-| dtype ID SEMI { VarDecl($1, $2, Noexpr) }
+| dtype ID SEMI { VarDecl($1, $2, Noexpr($1)) }
 | IF LPAREN expr RPAREN stmt ELSE stmt  { If($3, $5, $7) }
 | FOR LPAREN stmt expr SEMI expr RPAREN stmt { For($3, $4, $6, $8) }
 | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
 | RETURN expr SEMI { Return($2) }
 | LBRACE stmt_list RBRACE { Block(List.rev $2)}
-| dtype ID LBRACKET expr RBRACKET SEMI{ ArrayDecl($1, $2, $4, Noexpr) }
+| dtype ID LBRACKET expr RBRACKET SEMI{ ArrayDecl($1, $2, $4, Noexpr($1)) }
 
 expr:
     LPAREN expr RPAREN { $2 } 
