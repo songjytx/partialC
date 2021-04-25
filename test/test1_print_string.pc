@@ -1,3 +1,5 @@
 void main(){
 	prints('Hello World!');	
+	string b = 'var';
+	prints(b);
 }
