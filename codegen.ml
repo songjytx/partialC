@@ -110,6 +110,8 @@ let translate (functions) =
                        let ty = array_t llvm_ty in 
                        let alloc = L.build_alloca ty "alloc" builder in
                        let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
+                       let len_loc = L.build_struct_gep alloc 1 "" builder in
+
                        let len = List.length a in
                        let cap = len * 2 in 
                        let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder
@@ -122,6 +124,7 @@ let translate (functions) =
                        in
                        let _, builder = List.fold_left sto (0, builder) a in
                        let _ = L.build_store data_loc data_field_loc builder in
+                       let _ = L.build_store (const_i32_of len) len_loc builder in
                        let value = L.build_load alloc "value" builder 
                      in (value, map, builder)
 
@@ -132,6 +135,12 @@ let translate (functions) =
                       in
                       let a_addr = lookup map name in
                       let data_field_loc = L.build_struct_gep a_addr 0 "" builder in
+
+(*                       let len_field_loc = L.build_struct_gep a_addr 1 "" builder in
+                      let len_loc = L.build_load len_field_loc "" builder in
+                      let value = L.build_load i_addr "" builder in *)
+
+                      (* let _ = print_string "**checking**" in *)
                       let data_loc = L.build_load data_field_loc "" builder in
                       let ival, _, builder = expr map builder idx in
                       let i_addr = L.build_gep data_loc [| ival |] "" builder in 
@@ -212,6 +221,13 @@ let translate (functions) =
 
       | SCall ("printf", [e]) -> 
         let e', _, builder = expr map builder e in L.build_call printf_func [| float_format_str ; e' |] "printf" builder, map, builder
+      
+      | SCall ("sizeof", [e]) -> let a_addr = (match e with
+            _, SId s -> lookup map s)
+            in 
+            let len_field_loc = L.build_struct_gep a_addr 1 "" builder in
+            let value = L.build_load len_field_loc "" builder in
+            value, map, builder
 
       | SCall ("sizeof", [e]) -> 
               (* let (a, b, c) = (match e with 
@@ -278,22 +294,19 @@ let translate (functions) =
           (* space for ID *)            
           let alloc = L.build_alloca llvm_ty "alloc" builder in
           let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
-           let len = (match e1 with
-            (* _, SId s -> lookup map s *)
-            _, SIntLit i -> i
-          )
-           in 
-           let cap = len * 2 in 
-           let data_loc = L.build_array_alloca (ltype_of_array_element t) (const_i32_of cap) "data_loc" builder
-           in
-           let m' = StringMap.add v addr map in
-           let _ = L.build_store data_loc data_field_loc builder in
-
-           let value = L.build_load alloc "value" builder in 
-           let dl = lookup m' v in
-           let _ = L.build_store value dl builder in 
-           (* ignore(L.build_store value (lookup m' v) builder);  *)
-           (builder, m')
+          let len = (match e1 with _, SIntLit i -> i) in 
+          let len_loc = L.build_struct_gep alloc 1 "" builder in
+          let cap = len * 2 in 
+          let data_loc = L.build_array_alloca (ltype_of_array_element t) (const_i32_of cap) "data_loc" builder
+          in
+          let m' = StringMap.add v addr map in
+          let _ = L.build_store data_loc data_field_loc builder in
+          let _ = L.build_store (const_i32_of len) len_loc builder in
+          let value = L.build_load alloc "value" builder in 
+          let dl = lookup m' v in
+          let _ = L.build_store value dl builder in 
+          (* ignore(L.build_store value (lookup m' v) builder);  *)
+          (builder, m')
 
       | SWhile(condition, stmtList) ->
           let pred_bb = L.append_block context "while" the_function in

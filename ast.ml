@@ -1,4 +1,4 @@
-type typ = Int | Float | Bool | Void | String | Array of typ
+type typ = Int | Float | Bool | Void | String | Array of typ |  Struct of string 
 type operator = Add | Sub | Mul | Div | Mod | Sep | Eq | Neq | Lt | Leq | Gt | Geq | And | Or
 type assignment = Assign
 
@@ -32,6 +32,11 @@ type stmt =
 	| Return of expr
   | Expr of expr
 
+type struct_decl = {
+    sname: string;
+    members: stmt list;
+  }
+
 type func_decl = {
     typ : typ;
     fname : string;
@@ -39,7 +44,7 @@ type func_decl = {
     fstmts : stmt list;
   }
 
-type program = func_decl list
+type program = struct_decl list * func_decl list
 
 let rec string_of_typ = function
     Int -> "int"
@@ -48,6 +53,7 @@ let rec string_of_typ = function
   | Void -> "void"
   | String -> "string"
   | Array(t) -> string_of_typ(t) ^ " array"
+  | Struct(t) -> t
   
 
 let string_of_op = function
@@ -106,12 +112,11 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.fstmts) ^
   "}\n"
 
-(* = function
- 	FuncDecl(t, fname, argslist, stmtlist) -> string_of_typ t ^ " " ^ fname ^ "(" ^ String.concat ", " (List.map snd argslist) ^
-  ")\n{\n" ^
-  String.concat "" (List.map string_of_stmt stmtlist) ^
-  "}\n" *)
+let string_of_structs sdecl = 
+  "struct " ^ sdecl.sname ^ "{\n" ^
+  String.concat "" (List.map string_of_stmt sdecl.members) ^
+  "};\n"
 
-let string_of_program (funcs) =
-  (* String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^ *)
+let string_of_program (structs, funcs) =
+  String.concat "" (List.map string_of_structs structs) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs)

@@ -5,7 +5,17 @@ open Sast
 
 module StringMap = Map.Make(String)
 
-let check (functions) =
+let check (structs, functions) =
+  (**** Checking Functions ****)
+(*   let add_struct map sd = 
+    let dup_err = "struct dup error" 
+    and n = sd.sname
+    in match sd with
+      _ when StringMap.mem sd.sname map -> make_err dup_err
+    | _ -> StringMap.add n sd map
+
+    StringMap.add sd.struct_name sd m
+  in *)
   (* Add function name to symbol table *)
   let add_func map fd = 
     let built_in_err = "function " ^ fd.fname ^ " is a built-in function and may not be redefined"
@@ -25,6 +35,10 @@ let check (functions) =
       ] 
   in
 
+  (* The structs *)
+(*   let struct_decls = List.fold_left add_struct StringMap.empty structs
+  in *)
+ 
   (* Collect all other function names into one symbol table *)
   let function_decls = List.fold_left add_func built_in_funcs functions
   in
@@ -179,7 +193,7 @@ let check (functions) =
         let err = "illegal argument found." in
         (* let ty = check_type_equal t right_t err in *)
         let len = match e with
-          Ast.ArrayLit t -> (* ignore(print_string ("" ^ string_of_int (List.length t))); *) List.length t 
+          Ast.ArrayLit t ->  List.length t 
         | _ -> 0
         in
         let new_map = add_var map' (t, id, len) in

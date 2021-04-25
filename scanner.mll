@@ -37,6 +37,7 @@ rule tokenize = parse
 | "true"   	{ BOOL_L(true) }
 | "false"   { BOOL_L(false) }
 | "null"   	{ NULL }
+| "struct"  { STRUCT }
 | "if"   	{ IF }
 | "else"  	{ ELSE }
 | "for"   	{ FOR }
@@ -46,6 +47,7 @@ rule tokenize = parse
 | ['-']?digit+['.']digit+ as lxm {FLOAT_L(float_of_string lxm)}
 | "\'" [^''']+ "\'" as lxm { STRING_L(lxm) }
 | ['a'-'z']+ as lxm { ID(lxm) }
+| ['A'-'Z']['a'-'z' 'A'-'Z']* as structLit { STRUCT_ID(structLit) }
 | eof { EOF }
 | _ as ch { raise (Failure("illegal character detected " ^ Char.escaped ch)) }
 

@@ -22,10 +22,12 @@
 %token NULL
 %token INT BOOL STRING FLOAT VOID
 %token ARRAY
+%token STRUCT
 %token <int> INT_L
 %token <float> FLOAT_L
 %token <bool> BOOL_L
-%token <string> ID STRING_L
+%token <string> ID STRING_L 
+%token <string> STRUCT_ID
 %token RETURN
 %token EOF
 
@@ -46,8 +48,15 @@
 %%
 
 program:
-  { ([]) } 
-| program func_decl { $2 :: $1 } 
+  { [], [] } 
+| program struct_decl { ($2 :: fst $1), snd $1 }
+| program func_decl   { fst $1, ($2 :: snd $1) } 
+
+
+struct_decl:
+  STRUCT STRUCT_ID LBRACE stmt_list RBRACE SEMI
+  { { sname = $2; 
+      members = List.rev $4;} }
 
 func_decl:
   dtype ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE 
@@ -84,7 +93,6 @@ stmt:
 | RETURN expr SEMI { Return($2) }
 | LBRACE stmt_list RBRACE { Block(List.rev $2)}
 | dtype ID LBRACKET expr RBRACKET SEMI{ ArrayDecl($1, $2, $4, Noexpr) }
-
 
 expr:
     LPAREN expr RPAREN { $2 } 
@@ -133,3 +141,4 @@ dtype:
   | STRING { String }
   | VOID { Void }
   | ARRAY dtype { Array($2) }
+  | STRUCT_ID {Struct($1)}
