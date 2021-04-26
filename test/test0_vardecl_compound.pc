@@ -1,0 +1,22 @@
+struct Student{
+	int sid;
+	float grade;
+	bool graduated;
+};
+
+void main(){
+	string str_a = 'hello world';
+	prints(str_a);
+	
+	arr int a = [1,2,3];
+
+	Student x;
+ 	x.sid = 1;
+ 	x.grade = 4.5;
+ 	x.graduated = false;
+}
+
+
+
+
+

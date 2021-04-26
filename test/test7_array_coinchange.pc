@@ -1,0 +1,28 @@
+// Coin Change
+// Suppose we have coins of value 1, 2 and 5. Given a target of N, return the fewest number of coins to make up N 
+
+// result[N] = min ({result[N − vi] + 1}) for N > 0 and vi = 1, 2, 5
+// To make change for n cents, we are going to figure out how to make change for every value x < n first.
+
+void main(){
+    arr int change = [1, 2, 5];
+
+    arr int result[28]; //all values initialized to 
+
+    // mark result[1] result[2] and result[5] as 1.
+    for(int i=0; i<=sizeof(change); i=i+1){
+        result[change[i]] = 1;
+    }
+
+    for(int j=1; j<sizeof(result); j=j+1){
+        for(int k=0; k<=sizeof(change); k=k+1){
+            if(change[k] < j && (result[j] > (result[j- change[k]] + result[change[k]]) || result[j] == 0)){
+                result[j] = result[j-change[k]] + 1;
+            }
+        }
+    }
+
+    for(int y=1; y<sizeof(result); y=y+1){
+        printi(result[y]);
+    }
+}

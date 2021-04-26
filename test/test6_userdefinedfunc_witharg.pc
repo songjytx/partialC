@@ -1,4 +1,4 @@
-int  testcall(int b){
+void testcall(int b){
 	b = b + 1;
 	printi(b);
 	if(b > 5){
