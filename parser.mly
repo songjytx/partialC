@@ -95,6 +95,7 @@ stmt:
 | dtype ID ASSIGN expr SEMI { VarDecl($1, $2, $4) }
 | dtype ID SEMI { VarDecl($1, $2, Noexpr($1)) }
 | IF LPAREN expr RPAREN stmt ELSE stmt  { If($3, $5, $7) }
+| IF LPAREN expr RPAREN stmt { If($3, $5, Block([])) }
 | FOR LPAREN stmt expr SEMI expr RPAREN stmt { For($3, $4, $6, $8) }
 | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
 | RETURN expr SEMI { Return($2) }
