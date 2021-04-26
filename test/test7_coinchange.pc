@@ -11,7 +11,7 @@ void main(){
         for(int k=0; k<=sizeof(change); k=k+1){
             if(change[k] < j && (result[j] > (result[j- change[k]] + result[change[k]]) || result[j] == 0)){
                 result[j] = result[j-change[k]] + result[change[k]];
-            }else{}
+            }
         }
     }
 
