@@ -1,4 +1,0 @@
-void main(){
-    arr int a[8];
-    a[8] = 0;
-}

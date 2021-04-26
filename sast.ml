@@ -62,7 +62,6 @@ let rec string_of_sexpr (sex:sexpr) = match snd sex with
 let string_of_svdecl = function
     VarDecl(t, id, Noexpr(ty)) -> string_of_typ t ^ " " ^ id
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^ " = "
-(*Mingjie, please fix bug here*)
 
 
 let rec string_of_sstmt = function
