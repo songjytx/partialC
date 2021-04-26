@@ -1,4 +1,4 @@
-void testcall(int b){
+int testcall(int b){
 	b = b + 1;
 	printi(b);
 	if(b > 5){
@@ -6,6 +6,7 @@ void testcall(int b){
 	}else{
 		testcall(b);
 	}
+	return -1;
 }
 
 void main(){
