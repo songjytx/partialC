@@ -1,3 +1,5 @@
 void main(){
-	printi(1);	
+	printi(1);
+	int a = 4;
+	printi(a*3);
 }
