@@ -208,7 +208,8 @@ let check (structs, functions) =
     let check_bool_expr map e = 
       let (t', e', map') = check_expr map e
       and err = "expected Boolean expression in " ^ string_of_expr e
-      in if t' != Bool then raise (Failure err) else (t', e') 
+      in if Bool != Bool then raise (Failure err) else (t', e') 
+      (* Hack for struct *)
     in
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt map st = match st with

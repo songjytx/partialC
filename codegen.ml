@@ -139,18 +139,16 @@ let translate (structs, functions) =
                        let alloc = L.build_alloca ty "alloc" builder in
                        let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
                        let len_loc = L.build_struct_gep alloc 1 "" builder in
-
                        let len = List.length a in
                        let cap = len * 2 in 
-                       let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder
-                       in
-                       let sto (acc, builder) ex = 
+                       let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder in
+                       let array_iter (acc, builder) ex = 
                          let value, m', builder = expr map builder ex in
                          let item_loc = L.build_gep data_loc [|const_i32_of acc |] "item_loc" builder in
                          let _ = L.build_store value item_loc builder in
                          (acc + 1, builder)
                        in
-                       let _, builder = List.fold_left sto (0, builder) a in
+                       let _, builder = List.fold_left array_iter (0, builder) a in
                        let _ = L.build_store data_loc data_field_loc builder in
                        let _ = L.build_store (const_i32_of len) len_loc builder in
                        let value = L.build_load alloc "value" builder 
