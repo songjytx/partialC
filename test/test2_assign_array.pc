@@ -1,4 +1,4 @@
 void main(){
-	arr int a[3];
+	arr int a = [1, 2, 3];
 
 }
