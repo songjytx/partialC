@@ -390,6 +390,23 @@ let translate (structs, functions) =
           let cap = len * 2 in 
           let data_loc = L.build_array_alloca (ltype_of_array_element t) (const_i32_of cap) "data_loc" builder
           in
+          let noexpr_value = (match t with 
+              Array Ast.Int -> L.const_int i32_t 0
+            | Array Ast.Float -> L.const_float float_t 0.0
+            | Array Ast.Bool -> L.const_int i1_t 1
+            | Array Ast.String -> let alloc = L.build_alloca string_t "alloc" builder in 
+                        let str_global = L.build_global_string "" "str_global" builder in
+                        let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
+                        let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
+                        let _ = L.build_store str str_field_loc builder in
+                        L.build_load alloc "" builder)
+          in 
+          let rec sto (acc, builder) = 
+            let item_loc = L.build_gep data_loc [|const_i32_of acc |] "item_loc" builder in
+            let _ = L.build_store noexpr_value item_loc builder in
+            if acc < len then sto (acc + 1, builder) else acc, builder
+          in
+          let _, builder = sto (0, builder) in
           let m' = StringMap.add v (addr, A.Void) map in
           let _ = L.build_store data_loc data_field_loc builder in
           let _ = L.build_store (const_i32_of len) len_loc builder in

@@ -100,7 +100,7 @@ let check (structs, functions) =
           let _ = match sindex with 
             SIntLit l ->               
               let (_, _, size) = StringMap.find stringName map in 
-              if l > size && size != 0 then raise(Failure("Array Index out ouf bound: " ^ string_of_int l)) 
+              if l >= size && size != 0 then raise(Failure("Array Index out ouf bound: " ^ string_of_int l)) 
               else l
             | _ -> 0
           in 
@@ -137,7 +137,7 @@ let check (structs, functions) =
           let _ = match sindex with 
             SIntLit l -> 
               let (_, _, size) = StringMap.find stringName map in 
-              if l > size && size != 0 then raise(Failure("Array Index out ouf bound: " ^ string_of_int l)) 
+              if l >= size && size != 0 then raise(Failure("Array Index out ouf bound: " ^ string_of_int l)) 
               else l
             | _ -> 0
           in 
