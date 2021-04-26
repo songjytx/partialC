@@ -6,6 +6,7 @@ and sx =
   | SNot of sexpr
   | SAssignOp of sexpr * sexpr
   | SArrayAssignOp of sexpr * sexpr * sexpr
+  | SStructAssignOp of sexpr * expr * sexpr
   | SVar of string
   | SStringLit of string
   | SFloatLit of float
@@ -13,6 +14,7 @@ and sx =
   | SBoolLit of bool
   | SArrayLit of sexpr list
   | SArrayIndex of sexpr * sexpr
+  | SStructAccess of sexpr * expr
   | SId of string
   | SCall of string * sexpr list
   | SNoexpr of typ
@@ -29,6 +31,10 @@ type sstmt =
   | SReturn of sexpr
 
 
+type sstruct_decl = {
+    ssname: string;
+    smembers: bind list;
+  }
 
 type sfunc_decl = {
     styp : typ;
@@ -37,7 +43,7 @@ type sfunc_decl = {
     sfstmts : sstmt list;
   }
 
-type sprogram = sfunc_decl list
+type sprogram = sstruct_decl list * sfunc_decl list
 
 (* pretty printing function*)
 
@@ -79,12 +85,11 @@ let string_of_sfdecl fdecl =
   String.concat "" (List.map string_of_sstmt fdecl.sfstmts) ^
   "}\n"
 
-(* = function
-  FuncDecl(t, fname, argslist, stmtlist) -> string_of_typ t ^ " " ^ fname ^ "(" ^ String.concat ", " (List.map snd argslist) ^
-  ")\n{\n" ^
-  String.concat "" (List.map string_of_stmt stmtlist) ^
-  "}\n" *)
+let string_of_sstructs sdecl = 
+  "struct " ^ sdecl.ssname ^ "{\n" ^
+  String.concat "\n" (List.map snd sdecl.smembers) ^
+  "\n};\n"
 
-let string_of_sprogram (funcs) =
-  (* String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^ *)
+let string_of_sprogram (structs, funcs) =
+  String.concat "" (List.map string_of_sstructs structs) ^ "\n" ^
   String.concat "\n" (List.map string_of_sfdecl funcs)

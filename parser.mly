@@ -54,7 +54,7 @@ program:
 
 
 struct_decl:
-  STRUCT STRUCT_ID LBRACE stmt_list RBRACE SEMI
+  STRUCT STRUCT_ID LBRACE member_list RBRACE SEMI
   { { sname = $2; 
       members = List.rev $4;} }
 
@@ -72,6 +72,13 @@ formals_opt:
 formal_list:
     dtype ID                   { [($1,$2)]     }
   | formal_list COMMA dtype ID { ($3,$4) :: $1 }
+
+member_list:
+    /* nothing */ { [] }
+  | member_list member   { $2 :: $1 }
+
+member:
+  dtype ID SEMI  {($1,$2) }
 
 vname: 
     ID {Id($1)}
@@ -120,6 +127,8 @@ expr:
   | vname ASSIGN expr {AssignOp($1, $3)}
   | ID LBRACKET expr RBRACKET ASSIGN expr {ArrayAssignOp(Id($1), $3, $6)}
   | ID LBRACKET expr RBRACKET {ArrayIndex(Id($1), $3)}
+  | ID DOT ID {StructAccess(Id($1), Id($3))}
+  | ID DOT ID ASSIGN expr {StructAssignOp(Id($1), Id($3), $5)}
 
 args_opt:
     /* nothing */ { [] }

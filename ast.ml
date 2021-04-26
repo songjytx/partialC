@@ -17,6 +17,8 @@ type expr =
   | Call of string * expr list
   | ArrayLit of expr list
   | ArrayIndex of expr * expr
+  | StructAccess of expr * expr
+  | StructAssignOp of expr * expr * expr
   | Noexpr of typ
 
 type bind = typ * string
@@ -34,7 +36,7 @@ type stmt =
 
 type struct_decl = {
     sname: string;
-    members: stmt list;
+    members: bind list;
   }
 
 type func_decl = {
@@ -84,6 +86,8 @@ let rec string_of_expr = function
   | ArrayAssignOp(v, i, e) -> string_of_expr v ^  "[" ^ string_of_expr i ^ "]"^" = " ^ string_of_expr e
   | ArrayLit(l) -> "[" ^ (String.concat ", " (List.map string_of_expr l)) ^ "]"
   | ArrayIndex(v, i) -> string_of_expr v ^ "[" ^ string_of_expr i ^ "]"
+  | StructAssignOp(v, m, e) -> string_of_expr v ^ "." ^ string_of_expr m ^ " = "^ string_of_expr e ^";"
+  | StructAccess(v, m) -> string_of_expr v ^ "." ^ string_of_expr m 
   | _ -> "no expression matched*******"
 
 let string_of_vdecl = function
@@ -114,7 +118,7 @@ let string_of_fdecl fdecl =
 
 let string_of_structs sdecl = 
   "struct " ^ sdecl.sname ^ "{\n" ^
-  String.concat "" (List.map string_of_stmt sdecl.members) ^
+  String.concat "" (List.map snd sdecl.members) ^
   "};\n"
 
 let string_of_program (structs, funcs) =

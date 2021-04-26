@@ -7,15 +7,22 @@ module StringMap = Map.Make(String)
 
 let check (structs, functions) =
   (**** Checking Functions ****)
-(*   let add_struct map sd = 
+  let add_struct map sd = 
     let dup_err = "struct dup error" 
+    and make_err er = raise (Failure er)
     and n = sd.sname
     in match sd with
       _ when StringMap.mem sd.sname map -> make_err dup_err
     | _ -> StringMap.add n sd map
-
-    StringMap.add sd.struct_name sd m
-  in *)
+  in
+  let check_struct struc =
+    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name (ty, name, 0) m) StringMap.empty struc.members
+    in
+      {
+        ssname = struc.sname;
+        smembers = struc.members;
+    }
+  in
   (* Add function name to symbol table *)
   let add_func map fd = 
     let built_in_err = "function " ^ fd.fname ^ " is a built-in function and may not be redefined"
@@ -101,8 +108,16 @@ let check (structs, functions) =
               Array(t) -> t
             | _ -> raise(Failure("Type is not expected: " ^ string_of_typ typ))
           in
-(*           let _ = print_string (string_of_typ typ) in *)
           (element_type, SArrayIndex((typ, sid), (idx_type, sindex)), map2)
+
+      | StructAccess(v, m) -> 
+        let stringName = match v with
+            Id i -> i
+          | _ -> raise(Failure("Invalid identifier for array: " ^ string_of_expr v)) in  
+        let lt, vname, map1 = find_name v map "assignment error" in
+        (* let lt2, member, map2 = find_name m map1 "assignment error" in *)
+      (check_assign Ast.Int Ast.Int "array type miss match", SStructAccess((lt, vname), m), map1)
+
 
       | Noexpr(ty)     -> (ty, SNoexpr(ty), map)
       | Id s       -> (type_of_identifier s map, SId s, map)
@@ -132,6 +147,15 @@ let check (structs, functions) =
             )
         in
         (check_assign element_type rt "array type miss match", SArrayAssignOp((lt, vname), (it, ix),(rt, ex)), map3)
+
+      | StructAssignOp(v, m, e)->     
+        let stringName = match v with
+            Id i -> i
+          | _ -> raise(Failure("Invalid identifier for array: " ^ string_of_expr v)) in  
+        let lt, vname, map1 = find_name v map "assignment error" in
+        (* let lt2, member, map2 = find_name m map1 "assignment error" in *)
+        let rt, ex, map2 = check_expr map1 e in
+      (check_assign Ast.Int Ast.Int "array type miss match", SStructAssignOp((lt, vname), m, (rt, ex)), map2)
 
       | Call(fname, args) as call -> 
           let fd = find_func fname in
@@ -247,4 +271,8 @@ let check (structs, functions) =
           in raise (Failure err)
     }
       
-  in (List.map check_function functions)
+  in 
+  let sfuncc = List.map check_function functions in 
+  let sstructs = List.map check_struct structs in
+  (sstructs, sfuncc)
+
