@@ -111,19 +111,23 @@ let check (structs, functions) =
           (element_type, SArrayIndex((typ, sid), (idx_type, sindex)), map2)
 
       | StructAccess(v, m) -> 
+        (* let _ = print_string "struct access**   " in  *)
         let stringName = match v with
             Id i -> i
-          | _ -> raise(Failure("Invalid identifier for array: " ^ string_of_expr v)) in  
+          | _ -> raise(Failure("Invalid identifier for struct: " ^ string_of_expr v)) in  
         let lt, vname, map1 = find_name v map "assignment error" in
+        (* let _ = print_string (string_of_typ lt) in  *)
         (* let lt2, member, map2 = find_name m map1 "assignment error" in *)
-      (check_assign Ast.Int Ast.Int "array type miss match", SStructAccess((lt, vname), m), map1)
+      (Int, SStructAccess((lt, vname), m), map1)
 
 
       | Noexpr(ty)     -> (ty, SNoexpr(ty), map)
       | Id s       -> (type_of_identifier s map, SId s, map)
       | AssignOp(v, e)-> 
+
         let lt, vname, map1 = find_name v map "assignment error" in
         let rt, ex, map2 = check_expr map1 e in
+        (* let _ = print_string (string_of_typ rt) in  *)
         (check_assign lt rt "type miss match", SAssignOp((lt, vname), (rt, ex)), map2)
 
       | ArrayAssignOp(v, i, e)-> 
@@ -167,10 +171,12 @@ let check (structs, functions) =
             let (et, e', map') = check_expr map e in 
             let err = "illegal argument found " ^ string_of_typ et ^
               " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
-            in (check_assign ft et err, e')
+            in (check_assign ft ft err, e')
+            (* Hack for struct *)
           in 
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'), map)
+
       | Not(e) as notEx-> let (t, e', map') = check_expr map e in
         if t != Bool then 
           raise (Failure ("expecting bool expression in " ^ string_of_expr notEx))
@@ -211,19 +217,18 @@ let check (structs, functions) =
         if t = func.typ then (SReturn (t, e'), map' )
         else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
 		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
-      | VarDecl(t, id, e) ->
-        let (right_t, sx, map') = check_expr map e  in
+      | VarDecl(tp, id, e) ->
 
+        let (right_t, sx, map') = check_expr map e  in
+        (* let _ = print_string (string_of_typ right_t) in *)
         let err = "illegal argument found." in
-        (* let ty = check_type_equal t right_t err in *)
         let len = match e with
           Ast.ArrayLit t ->  List.length t 
         | _ -> 0
         in
-        let new_map = add_var map' (t, id, len) in
-        (* let _=print_string id in *)
+        let new_map = add_var map' (tp, id, len) in
         let right = (right_t, sx) in
-        (SVarDecl(t, id, right), new_map)
+        (SVarDecl(tp, id, right), new_map)
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
       | ArrayDecl(t, id, e1, e) ->

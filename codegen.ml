@@ -44,7 +44,7 @@ let translate (structs, functions) =
 
   let rec ltype_of_struct_members = function
       A.Struct n -> struct_t n 
-    (* | A.Int -> i32_t *)
+    | A.Int -> i32_t
     | A.Float -> float_t    
     | A.String -> string_t
     | A.Bool -> i1_t
