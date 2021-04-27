@@ -121,7 +121,7 @@ let check (structs, functions) =
       (Int, SStructAccess((lt, vname), m), map1)
 
 
-      | Noexpr(ty)     -> (ty, SNoexpr(ty), map)
+      | Noexpr(ty) -> (ty, SNoexpr(ty), map)
       | Id s       -> (type_of_identifier s map, SId s, map)
       | AssignOp(v, e)-> 
 
@@ -213,22 +213,15 @@ let check (structs, functions) =
     in
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt map st = match st with
-        Expr e -> let (ty, sx, map') = check_expr map e in (SExpr (ty, sx), map')
-      | Return e -> let (t, e', map') = check_expr map e in
-        if t = func.typ then (SReturn (t, e'), map' )
-        else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
+        Expr e -> let (ty, sexpr, new_map) = check_expr map e in (SExpr (ty, sexpr), new_map)
       | VarDecl(tp, id, e) ->
-
-        let (right_t, sx, map') = check_expr map e  in
-        (* let _ = print_string (string_of_typ right_t) in *)
+        let (right_ty, sexpr, map') = check_expr map e  in
         let err = "illegal argument found." in
         let len = match e with
-          Ast.ArrayLit t ->  List.length t 
-        | _ -> 0
-        in
+            Ast.ArrayLit t ->  List.length t 
+          | _ -> 0 in
         let new_map = add_var map' (tp, id, len) in
-        let right = (right_t, sx) in
+        let right = (right_ty, sexpr) in
         (SVarDecl(tp, id, right), new_map)
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
@@ -237,12 +230,16 @@ let check (structs, functions) =
           if ty' != Ast.Int then raise ( Failure ("Integer is expected instead of " ^ string_of_typ t))
         else 
           let len = match e1 with
-          Ast.IntLit t -> t
+            Ast.IntLit t -> t
           in
           let new_map = add_var map (t, id, len) in
           let (t2, sx2, map') = check_expr map e in
           let r2 = (t2, sx2) in
           (SArrayDecl(t, id, (ty', e1'), r2), new_map)
+      | Return e -> let (t, e', map') = check_expr map e in
+        if t = func.typ then (SReturn (t, e'), map' )
+        else raise ( Failure ("return gives " ^ string_of_typ t ^ " expected " ^
+       string_of_typ func.typ ^ " in " ^ string_of_expr e))
 
       | Block sl -> 
         let rec check_stmt_list map sl = match sl with

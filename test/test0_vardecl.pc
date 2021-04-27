@@ -1,4 +1,0 @@
-int main(){
-	string a = 'aaa';
-	float b = 1.2;
-}

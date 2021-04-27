@@ -1,0 +1,10 @@
+void main(){
+	int a = -8;
+	printi(a);
+	
+	float b = 1.2;
+	printf(b);
+
+	bool c = true;
+	bool d = false;
+}

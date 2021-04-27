@@ -35,13 +35,11 @@ let translate (structs, functions) =
   and char_t     = L.i8_type     context
   and void_t     = L.void_type   context 
   and struct_t n  = L.named_struct_type context n in
-
+ (* Some compond type *)
   let array_t = fun (llvm_type) -> L.struct_type context [| L.pointer_type llvm_type; i32_t; i32_t|] in
   let string_t = L.struct_type context [| L.pointer_type char_t|] in 
-  let const_i32_of = L.const_int (L.i32_type context) in
-  let zero = L.const_int i32_t 0 in
-  (* Return the LLVM type for a MicroC type *)
-
+  let i32OF = L.const_int (L.i32_type context) in
+  (* llvm type of some strcut members *)
   let rec ltype_of_struct_members = function
       A.Struct n -> struct_t n 
     | A.Int -> i32_t
@@ -49,21 +47,19 @@ let translate (structs, functions) =
     | A.String -> string_t
     | A.Bool -> i1_t
   in
-  (* Structs *)
+  (* Structs declaration*)
   let structs_decls = 
     let struct_decl map sdecl =
       let name = sdecl.ssname
       and member_types = Array.of_list (List.map (fun (t,_) -> ltype_of_struct_members t) sdecl.smembers) in 
       let stype = L.struct_type context member_types in
-      (* let _ = print_string name in *)
       StringMap.add name (stype, sdecl.smembers) map in
     List.fold_left struct_decl StringMap.empty structs
   in
-  let struct_lookup s = 
+  let lookup_struc s = 
   try StringMap.find s structs_decls
     with Not_found -> raise (Failure ("struct not found")) in
-  (* Other types *)
-
+  (* llvm types for primitive types*)
   let rec ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
@@ -71,29 +67,24 @@ let translate (structs, functions) =
     | A.Void  -> void_t
     | A.String -> string_t
     | A.Array a -> array_t (ltype_of_typ a)
-    | A.Struct n -> fst (struct_lookup n)
+    | A.Struct n -> fst (lookup_struc n)
   in
-
-  (* ********************************************** *)
-
+  (* llvm type of array element *)
   let rec ltype_of_array_element = function
   A.Array a -> ltype_of_typ a
   in
+  (* print fucntion *)
   let printf_t = L.var_arg_function_type i32_t [| (L.pointer_type char_t)|] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
-  let string_concat_t : L.lltype = L.function_type string_t [| string_t; string_t |] in
-  let string_concat_f : L.llvalue = L.declare_function "strcat" string_concat_t the_module in
-
   (* Define each function (arguments and return type) so we can 
      call it even before we've created its body *)
-  let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
+  let function_decls =
     let function_decl map fdecl =
       let name = fdecl.sfname
       and formal_types = Array.of_list (List.map (fun (t,_ ) -> ltype_of_typ t ) fdecl.sformals) in 
       let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
       StringMap.add name (L.define_function name ftype the_module, fdecl) map in
-
     List.fold_left function_decl StringMap.empty functions in
   
   (* Fill in the body of the given function *)
@@ -103,7 +94,7 @@ let translate (structs, functions) =
     let char_format_str = L.build_global_stringptr "%s\n" "" builder
     and int_format_str = L.build_global_stringptr "%d\n" "" builder 
     and float_format_str = L.build_global_stringptr "%f\n" "" builder in
-
+  (* loca, variables *)
     let local_vars =
       let add_formal m (t, n) p = 
         L.set_value_name n p;
@@ -111,145 +102,151 @@ let translate (structs, functions) =
           ignore (L.build_store p local builder);
           StringMap.add n (local, A.Void) m 
       in
-
       List.fold_left2 add_formal StringMap.empty fdecl.sformals
           (Array.to_list (L.params the_function)) in
-
-    let lookup map n : L.llvalue = match StringMap.find_opt n map with
+   (* loop up for variables *)
+    let lookup map n = match StringMap.find_opt n map with
         Some (v, _) -> v 
       | None -> try fst (StringMap.find n local_vars)
                 with Not_found -> report_error("Could not find " ^ n)
     in
-
     (* Construct code for an expression; return its value *)
     let rec expr map builder ((_, expression) : sexpr) = match expression with
         SIntLit i  -> L.const_int i32_t i, map, builder  
       | SFloatLit f -> L.const_float float_t f, map, builder
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0), map, builder
-      | SStringLit s -> let alloc = L.build_alloca string_t "alloc" builder in 
-                        let str_global = L.build_global_string s "str_global" builder in
-                        let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
-                        let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
-                        let _ = L.build_store str str_field_loc builder in
-                        let value = L.build_load alloc "" builder
-                      in (value, map, builder)
+      | SStringLit s -> 
+        let alloc = L.build_alloca string_t "alloc" builder in 
+        let strGlobal = L.build_global_string s "strGlobal" builder in
+        let str = L.build_bitcast strGlobal (L.pointer_type i8_t) "str_cast" builder in 
+        let str_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
+        let _ = L.build_store str str_loc builder in
+        let value = L.build_load alloc "" builder
+        in (value, map, builder)
 
-      | SArrayLit a -> let llvm_ty = ltype_of_typ (fst (List.hd a))in
-                       let ty = array_t llvm_ty in 
-                       let alloc = L.build_alloca ty "alloc" builder in
-                       let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
-                       let len_loc = L.build_struct_gep alloc 1 "" builder in
-                       let len = List.length a in
-                       let cap = len * 2 in 
-                       let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder in
-                       let array_iter (acc, builder) ex = 
-                         let value, m', builder = expr map builder ex in
-                         let item_loc = L.build_gep data_loc [|const_i32_of acc |] "item_loc" builder in
-                         let _ = L.build_store value item_loc builder in
-                         (acc + 1, builder)
-                       in
-                       let _, builder = List.fold_left array_iter (0, builder) a in
-                       let _ = L.build_store data_loc data_field_loc builder in
-                       let _ = L.build_store (const_i32_of len) len_loc builder in
-                       let value = L.build_load alloc "value" builder 
-                     in (value, map, builder)
+      | SArrayLit a -> 
+         let llvm_ty = ltype_of_typ (fst (List.hd a))in
+         let ty = array_t llvm_ty in 
+         let alloc = L.build_alloca ty "alloc" builder in
+         let data_location = L.build_struct_gep alloc 0 "data_location" builder in
+         let len_loc = L.build_struct_gep alloc 1 "" builder in
+         let len = List.length a in
+         let cap = len * 2 in 
+         let data_loc = L.build_array_alloca llvm_ty (i32OF cap) "data_loc" builder in
+         let array_iter (acc, builder) ex = 
+           let value, m', builder = expr map builder ex in
+           let item_loc = L.build_gep data_loc [|i32OF acc |] "item_loc" builder in
+           let _ = L.build_store value item_loc builder in
+           (acc + 1, builder)
+         in
+         let _, builder = List.fold_left array_iter (0, builder) a in
+         let _ = L.build_store data_loc data_location builder in
+         let _ = L.build_store (i32OF len) len_loc builder in
+         let value = L.build_load alloc "value" builder 
+       in (value, map, builder)
 
       | SArrayIndex(id, idx) -> 
-                      let name = match snd id with 
-                            SId s -> s
-                          | _ -> "err:cannot index non-id"
-                      in
-                      let a_addr = lookup map name in
-                      let data_field_loc = L.build_struct_gep a_addr 0 "" builder in
-                      let data_loc = L.build_load data_field_loc "" builder in
-                      let ival, _, builder = expr map builder idx in
-                      let i_addr = L.build_gep data_loc [| ival |] "" builder in 
-                      let value = L.build_load i_addr "" builder in
-                      (value, map, builder)
+        let name = match snd id with 
+            SId s -> s
+          | _ -> "err:cannot index non-id"
+        in
+        let a_addr = lookup map name in
+        let data_location = L.build_struct_gep a_addr 0 "" builder in
+        let data_loc = L.build_load data_location "" builder in
+        let ival, _, builder = expr map builder idx in
+        let i_addr = L.build_gep data_loc [| ival |] "" builder in 
+        let value = L.build_load i_addr "" builder in
+        (value, map, builder)
 
       | SNoexpr(t)     -> (match t with
           A.Int -> L.const_int i32_t 0
         | A.Float -> L.const_float float_t 0.0
         | A.Bool -> L.const_int i1_t 1
-        | A.String -> let alloc = L.build_alloca string_t "alloc" builder in 
-                        let str_global = L.build_global_string "" "str_global" builder in
-                        let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
-                        let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
-                        let _ = L.build_store str str_field_loc builder in
-                        L.build_load alloc "" builder
-        | A.Array _ -> let llvm_ty = ltype_of_typ (fst (List.hd []))in
-                        let ty = array_t llvm_ty in 
-                        let alloc = L.build_alloca ty "alloc" builder in
-                        let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
-                        let len_loc = L.build_struct_gep alloc 1 "" builder in
+        | A.String -> 
+          let alloc = L.build_alloca string_t "alloc" builder in 
+          let strGlobal = L.build_global_string "" "strGlobal" builder in
+          let str = L.build_bitcast strGlobal (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
+          let str_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
+          let _ = L.build_store str str_loc builder in
+          L.build_load alloc "" builder
 
-                        let len = 0 in
-                        let cap = len * 2 in 
-                        let data_loc = L.build_array_alloca llvm_ty (const_i32_of cap) "data_loc" builder
-                        in
-                        let _ = L.build_store data_loc data_field_loc builder in
-                        let _ = L.build_store (const_i32_of len) len_loc builder in
-                        L.build_load alloc "value" builder) , map, builder
+        | A.Array _ -> 
+          let llvm_ty = ltype_of_typ (fst (List.hd []))in
+          let ty = array_t llvm_ty in 
+          let alloc = L.build_alloca ty "alloc" builder in
+          let data_location = L.build_struct_gep alloc 0 "data_location" builder in
+          let len_loc = L.build_struct_gep alloc 1 "" builder in
+
+          let len = 0 in
+          let cap = len * 2 in 
+          let data_loc = L.build_array_alloca llvm_ty (i32OF cap) "data_loc" builder
+          in
+          let _ = L.build_store data_loc data_location builder in
+          let _ = L.build_store (i32OF len) len_loc builder in
+          L.build_load alloc "value" builder) , map, builder
 
       | SId s       -> L.build_load (lookup map s) s builder, map, builder
-      | SAssignOp (v, e) -> let (e1, map1, builder) = expr map builder e in (match (snd v) with
-                            SId s -> 
-                            ignore(L.build_store e1 (lookup map s) builder); e1, map1, builder)
+      | SAssignOp (v, e) -> 
+        let (e1, map1, builder) = expr map builder e in 
+          (match (snd v) with
+            SId s -> 
+            ignore(L.build_store e1 (lookup map s) builder); e1, map1, builder)
 
       | SArrayAssignOp (v, i, e) -> 
-                      let rval, m', builder = expr map builder e in
-                      let name = match snd v with
-                          SId s -> s
-                      in
-                      let a_addr = lookup map name in
-                      let data_field_loc = L.build_struct_gep a_addr 0 "" builder in
-                      let data_loc = L.build_load data_field_loc "" builder in
-                      let ival, _, builder = expr map builder i in
-                      let addr = L.build_gep data_loc [| ival |] "" builder  in
-                      let _ = L.build_store rval addr builder in 
-                    (rval, m', builder)
+        let rval, m', builder = expr map builder e in
+        let name = match snd v with
+            SId s -> s
+        in
+        let a_addr = lookup map name in
+        let data_location = L.build_struct_gep a_addr 0 "" builder in
+        let data_loc = L.build_load data_location "" builder in
+        let ival, _, builder = expr map builder i in
+        let addr = L.build_gep data_loc [| ival |] "" builder  in
+        let _ = L.build_store rval addr builder in 
+        (rval, m', builder)
 
       | SStructAssignOp (v, m, e) ->
-                      let rval, map1, builder = expr map builder e in
-                      let name = match snd v with
-                          SId s -> s
-                      in
-                      let a_addr = lookup map1 name in
-                      let strcut_name = (match snd (StringMap.find name map1) with A.Struct i -> i) in
-                      (* let _ = print_string strcut_name in *)
+        let rval, map1, builder = expr map builder e in
+        let name = match snd v with
+            SId s -> s
+        in
+        let a_addr = lookup map1 name in
+        let strcut_name = (match snd (StringMap.find name map1) with A.Struct i -> i) in
+        (* let _ = print_string strcut_name in *)
 
-                      let mname = (match m with A.Id i -> i) in
+        let mname = (match m with A.Id i -> i) in
 
-                      let members = snd (struct_lookup strcut_name) in  
-                        let rec get_idx n lst i = match lst with
-                          | [] -> raise (Failure( "Struct member Error"))
-                          | hd::tl -> if (hd=n) then i else get_idx n tl (i+1)   
-                        in let idx = (get_idx mname (List.map (fun (_,nm) -> nm) members) 0) in            
-                      let ptr = L.build_struct_gep a_addr idx ("struct_p") builder in
-                      let _ = L.build_store rval ptr builder in
-                      (rval, map1, builder)
+        let members = snd (lookup_struc strcut_name) in  
+          let rec get_idx n lst i = match lst with
+            | [] -> raise (Failure( "Struct member Error"))
+            | hd::tl -> if (hd=n) then i else get_idx n tl (i+1)   
+          in let idx = (get_idx mname (List.map (fun (_,nm) -> nm) members) 0) in            
+        let ptr = L.build_struct_gep a_addr idx ("struct_p") builder in
+        let _ = L.build_store rval ptr builder in
+        (rval, map1, builder)
 
       | SStructAccess (v, m) -> 
-                      let name = match snd v with
-                          SId s -> s
-                      in
-                      let a_addr = lookup map name in
-                      let strcut_name = (match snd (StringMap.find name map) with A.Struct i -> i) in
+        let name = match snd v with
+            SId s -> s
+        in
+        let a_addr = lookup map name in
+        let strcut_name = (match snd (StringMap.find name map) with A.Struct i -> i) in
 
-                      let mname = (match m with A.Id i -> i) in
+        let mname = (match m with A.Id i -> i) in
 
-                      let members = snd (struct_lookup strcut_name) in  
-                        let rec get_idx n lst i = match lst with
-                          | [] -> raise (Failure( "Struct member Error"))
-                          | hd::tl -> if (hd=n) then i else get_idx n tl (i+1)   
-                        in let idx = (get_idx mname (List.map (fun (_,nm) -> nm) members) 0) in 
-                      (* let _ = print_string (string_of_int idx) in *)
-                      let ptr = L.build_struct_gep a_addr idx ("struct_p") builder in
-                      let value = L.build_load ptr "member_v" builder in
-                      (value, map, builder)             
+        let members = snd (lookup_struc strcut_name) in  
+          let rec get_idx n lst i = match lst with
+            | [] -> raise (Failure( "Struct member Error"))
+            | hd::tl -> if (hd=n) then i else get_idx n tl (i+1)   
+          in let idx = (get_idx mname (List.map (fun (_,nn) -> nn) members) 0) in 
+        let ptr = L.build_struct_gep a_addr idx ("struct_p") builder in
+        let value = L.build_load ptr "member_v" builder in
+        (value, map, builder)
+
       | SNot (e) -> 
         let (e', _, _) = expr map builder e in
         L.build_not e' "not operation" builder, map, builder
+
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in
@@ -267,16 +264,12 @@ let translate (structs, functions) =
     	  | A.And | A.Or ->
     	      raise (Failure "internal error: semant should have rejected and/or on float")
     	  ) e1' e2' "float op" builder, map, builder
-      (* | SBinop ((A.String,_ ) as e1, op, e2) ->
-        let (e1', _, _) = expr map builder e1
-        and (e2', _, _) = expr map builder e2 in
-        (match op with
-           A.Add     -> L.build_call string_concat_f [| e1'; e2' |] "string_concat" builder, map, builder
-         | _ -> raise (Failure ("operation " ^ (A.string_of_op op) ^ " not supported"))) *)
+
       | SBinop (e1, A.Mod, e2) -> 
         let (e1', _, _) = expr map builder e1
         and (e2', _, _) = expr map builder e2 in
         L.const_srem e1' e2', map, builder
+
       | SBinop (e1, op, e2) ->
     	  let (e1', _, _) = expr map builder e1
     	  and (e2', _, _) = expr map builder e2 in
@@ -304,36 +297,23 @@ let translate (structs, functions) =
       | SCall ("printf", [e]) -> 
         let e', _, builder = expr map builder e in L.build_call printf_func [| float_format_str ; e' |] "printf" builder, map, builder
       
-      | SCall ("sizeof", [e]) -> let a_addr = (match e with
-            _, SId s -> lookup map s)
-            in 
-            let len_field_loc = L.build_struct_gep a_addr 1 "" builder in
-            let value = L.build_load len_field_loc "" builder in
-            value, map, builder
+      | SCall ("sizeof", [e]) -> let a_addr = (match e with _, SId s -> lookup map s) in 
+        let len_field_loc = L.build_struct_gep a_addr 1 "" builder in
+        let value = L.build_load len_field_loc "" builder in
+        value, map, builder
 
       | SCall ("sizeof", [e]) -> 
-              (* let (a, b, c) = (match e with 
-                              _, SId i -> lookup map i)
-
-      in    | _ -> raise(Failure("Invalid input for sizeof function.")))      
-      L.const_int i32_t c, map, builder *)
-      let (e', _, builder) = expr map builder e  in
-      let length = L.array_length (L.type_of e') in
-      (* let _ = L.type_of ( e') in *)
-      L.const_int i32_t length, map, builder
-      (* L.const_int i32_t 20, map, builder *)
+        let (e', _, builder) = expr map builder e  in
+        let length = L.array_length (L.type_of e') in
+        L.const_int i32_t length, map, builder
 
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
     	  let llargs = List.map (fun(a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev args))) in
     	  let result = (match fdecl.styp with 
-                            A.Void -> ""
-                          | _ -> f ^ "_result") in
-             L.build_call fdef (Array.of_list llargs) result builder, map, builder
-      (* | SCall(name, exl) -> let (ldef, fd) = StringMap.find name function_decls in
-        let args = List.map (fun (a,b,c) -> a) (List.rev (List.map (expr map builder) (List.rev exl))) in
-        let call = L.build_call ldef (Array.of_list args) "" builder in
-        (call, map, builder) *)
+                          A.Void -> ""
+                        | _ -> f ^ "_result") in
+        L.build_call fdef (Array.of_list llargs) result builder, map, builder
     in
     
     (* LLVM insists each basic block end with exactly one "terminator" 
@@ -364,10 +344,8 @@ let translate (structs, functions) =
               let l_type = ltype_of_typ ty in
               let addr = L.build_alloca l_type st builder in         
               let m' = StringMap.add st (addr, ty) map in
-              (* let _ = print_string "builing struct" in *)
               (builder, m')
           | _ ->
-              (* let _ = print_string "testing" in *)
               let l_type = ltype_of_typ ty in
               let addr = L.build_alloca l_type st builder in
               let rval, m', builder = expr map builder rex in
@@ -378,36 +356,33 @@ let translate (structs, functions) =
       | SArrayDecl(t, v, e1, e) -> 
 
           let llvm_ty = ltype_of_typ t in
-          (* ID *)
-          let addr = L.build_alloca llvm_ty v builder in
-          (* space for ID *)            
+          let addr = L.build_alloca llvm_ty v builder in          
           let alloc = L.build_alloca llvm_ty "alloc" builder in
-          let data_field_loc = L.build_struct_gep alloc 0 "data_field_loc" builder in
+          let data_location = L.build_struct_gep alloc 0 "data_location" builder in
           let len = (match e1 with _, SIntLit i -> i) in 
           let len_loc = L.build_struct_gep alloc 1 "" builder in
           let cap = len * 2 in 
-          let data_loc = L.build_array_alloca (ltype_of_array_element t) (const_i32_of cap) "data_loc" builder
-          in
+          let data_loc = L.build_array_alloca (ltype_of_array_element t) (i32OF cap) "data_loc" builder in
           let noexpr_value = (match t with 
               Array Ast.Int -> L.const_int i32_t 0
             | Array Ast.Float -> L.const_float float_t 0.0
             | Array Ast.Bool -> L.const_int i1_t 1
             | Array Ast.String -> let alloc = L.build_alloca string_t "alloc" builder in 
-                        let str_global = L.build_global_string "" "str_global" builder in
-                        let str = L.build_bitcast str_global (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
-                        let str_field_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
-                        let _ = L.build_store str str_field_loc builder in
+                        let strGlobal = L.build_global_string "" "strGlobal" builder in
+                        let str = L.build_bitcast strGlobal (L.pointer_type i8_t) "str_cast" builder in (* Mingjie: this is crucial*)
+                        let str_loc = L.build_struct_gep alloc 0 "str_cast_loc" builder in
+                        let _ = L.build_store str str_loc builder in
                         L.build_load alloc "" builder)
           in 
           let rec sto (acc, builder) = 
-            let item_loc = L.build_gep data_loc [|const_i32_of acc |] "item_loc" builder in
+            let item_loc = L.build_gep data_loc [|i32OF acc |] "item_loc" builder in
             let _ = L.build_store noexpr_value item_loc builder in
             if acc < len then sto (acc + 1, builder) else acc, builder
           in
           let _, builder = sto (0, builder) in
           let m' = StringMap.add v (addr, A.Void) map in
-          let _ = L.build_store data_loc data_field_loc builder in
-          let _ = L.build_store (const_i32_of len) len_loc builder in
+          let _ = L.build_store data_loc data_location builder in
+          let _ = L.build_store (i32OF len) len_loc builder in
           let value = L.build_load alloc "value" builder in 
           let dl = lookup m' v in
           let _ = L.build_store value dl builder in 
