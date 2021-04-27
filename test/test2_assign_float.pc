@@ -1,0 +1,4 @@
+void main(){
+	float a = 4.2;
+	printf(a);
+}

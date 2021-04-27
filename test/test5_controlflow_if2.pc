@@ -1,0 +1,7 @@
+void main(){
+	int a = 3;
+	// a =0;
+	if (a > 1) {
+		prints('larger than 1');
+	}
+}

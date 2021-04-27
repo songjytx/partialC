@@ -1,0 +1,4 @@
+void main(){
+    arr int change[9];
+    printi(sizeof(change));
+}

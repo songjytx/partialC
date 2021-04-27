@@ -1,0 +1,9 @@
+void foo(arr int t){
+	t[0] = 10;
+}
+
+void main(){
+	arr int a[3];
+	foo(a);
+	printi(a[0]);
+}
