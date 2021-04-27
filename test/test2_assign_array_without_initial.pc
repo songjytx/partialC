@@ -1,0 +1,4 @@
+void main(){
+	arr int a[3];
+
+}
