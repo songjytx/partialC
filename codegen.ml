@@ -43,7 +43,7 @@ let translate (structs, functions) =
   let rec ltype_of_struct_members = function
       A.Struct n -> struct_t n 
     | A.Int -> i32_t
-    | A.Float -> float_t    
+    | A.Float -> float_t
     | A.String -> string_t
     | A.Bool -> i1_t
   in
@@ -137,7 +137,7 @@ let translate (structs, functions) =
            let value, m', builder = expr map builder ex in
            let item_loc = L.build_gep data_loc [|i32OF acc |] "item_loc" builder in
            let _ = L.build_store value item_loc builder in
-           (acc + 1, builder)
+           (acc+1, builder)
          in
          let _, builder = List.fold_left array_iter (0, builder) a in
          let _ = L.build_store data_loc data_location builder in
@@ -176,7 +176,6 @@ let translate (structs, functions) =
           let alloc = L.build_alloca ty "alloc" builder in
           let data_location = L.build_struct_gep alloc 0 "data_location" builder in
           let len_loc = L.build_struct_gep alloc 1 "" builder in
-
           let len = 0 in
           let cap = len * 2 in 
           let data_loc = L.build_array_alloca llvm_ty (i32OF cap) "data_loc" builder
